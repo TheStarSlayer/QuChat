@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import "dotenv/config";
 
 const app = express();
 const PORT = 8596;
