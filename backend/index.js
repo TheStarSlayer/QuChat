@@ -16,7 +16,7 @@ app.listen(PORT, () => {
         mongoose.connect(process.env.MONGODB_CONN);
     }
     catch (err) {
-        console.log("Unexpected error occurred: Database could not be connected.");
+        console.error("Unexpected error occurred: Database could not be connected.");
         console.error(err);
     }
 });
