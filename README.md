@@ -12,3 +12,13 @@ A chat application that prioritizes privacy and end-to-end encryption using BB84
 - **Quantum magic** - Implement BB84 QKD with and without eavesdropper detection
 - **Message sending** - Encryption, Web sockets, and Multi-media support
 - **Graceful shutdown of private chat session** - Clean termination of chat sessions
+
+## Dev Notes
+
+### Authentication Flow
+
+1. **User Input** - User fills in username and password
+2. **Server Validation** - Server authenticates the credentials
+3. **Token Generation** - Server returns access token (short-lived) and refresh token (long-lived)
+4. **WebSocket Connection** - Server and client initialize a WebSocket connection
+5. **Cache Session** - Cache the WebSocket ID in Redis for quick retrieval
