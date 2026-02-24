@@ -7,7 +7,7 @@ const authRoute = express.Router();
 // TODO: Implement these controllers!
 authRoute.post("/login", loginController);
 authRoute.post("/signup", signupController);
-authRoute.put("/refresh", refreshController)
+authRoute.put("/refresh/:userId", refreshController)
 authRoute.get("/logout", logoutController);
 
 export default authRoute;
