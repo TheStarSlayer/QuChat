@@ -4,6 +4,7 @@ const { Schema, model } = mongoose;
 const userSchema = new Schema({
     username: String,
     password: String,
+    refreshToken: String,
     profilePic: String,
     currentlyActive: Boolean
 }, {
