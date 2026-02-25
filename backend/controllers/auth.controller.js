@@ -13,7 +13,7 @@ export const signupController = async (req, res) => {
         const pfpLink = `https://cdn.auth0.com/avatars/${username[0] + username[1]}.png`
         const hashedPwd = await bcrypt.hash(password, process.env.SALT_ROUNDS);
 
-        const newUser = await User.create({
+        await User.create({
             username: username,
             password: hashedPwd,
             profilePic: pfpLink,
@@ -21,7 +21,6 @@ export const signupController = async (req, res) => {
         });
 
         return res.status(201).json({
-            id: newUser._id,
             msg: "User added to database, please log in now to avail services!"
         });
     }
@@ -64,7 +63,6 @@ export const loginController = async (req, res) => {
 
         return res.status(200).json({
             msg: "Logged in successfully!",
-            userId: userDoc._id,
             accessToken: accessToken
         });
     }
@@ -118,7 +116,6 @@ export const refreshController = async (req, res) => {
 
         return res.status(200).json({
             msg: "Refreshed access token!",
-            userId: userDoc._id,
             accessToken: accessToken
         });
     }
@@ -130,11 +127,20 @@ export const refreshController = async (req, res) => {
 
 export const logoutController = async (req, res) => {
     try {
+        const refreshToken = req.cookies.refreshToken;
+        
+        if (refreshToken === undefined)
+            return res.status(400).json({ error: "Refresh token does not exist. User may already be logged out!" });
+
+        const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, { ignoreExpiration: true });
+        const userId = payload.userId; 
+        
         res.clearCookie('refreshToken');
 
-        const userDoc = await User.findById(req.body.userId);
+        const userDoc = await User.findById(userId);
         userDoc.refreshToken = null;
         userDoc.currentlyActive = false;
+
         await userDoc.save();
 
         return res.status(200).json({
