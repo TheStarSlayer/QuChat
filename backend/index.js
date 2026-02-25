@@ -17,6 +17,6 @@ app.listen(PORT, () => {
     }
     catch (err) {
         console.error("Unexpected error occurred: Database could not be connected.");
-        console.error(err);
+        console.error(err.message);
     }
 });
