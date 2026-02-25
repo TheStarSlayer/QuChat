@@ -8,7 +8,34 @@ export const verifyStateController = async (req, res) => {
     if (refreshToken === null) {
         return res.status(401).json({ error: "User must login to avail services!" });
     }
-    return res.status(202).json({ msg: "User may attempt to refresh their access token" });
+
+    try {
+        const currRefreshToken = req.cookies.refreshToken;
+        
+        try {
+            const payload = jwt.verify(currRefreshToken, process.env.REFRESH_TOKEN_SECRET);    
+        }
+        catch (err) {
+            if (err.name === "TokenExpiredError") {
+                return res.status(401).json({ error: "JWT expired! Re-login to avail services!" });
+            }
+            return res.status(401).json({ error: "Cannot verify! Re-login to avail services!" });
+        }
+
+        const userDoc = await User.findById(payload.userId);
+        if (userDoc.refreshToken === null) {
+            return res.status(401).json({ error: "Refresh token should not exist! Re-login to avail services!" });
+        }
+        if (!(await bcrypt.compare(currRefreshToken, userDoc.refreshToken))) {
+            return res.status(400).json({ error: "Refresh token does not belong to user. Logout now" });
+        }
+
+        return res.status(202).json({ msg: "User may attempt to refresh their access token" });
+    }
+    catch (err) {
+        console.error("Unexpeted error occurred: ", err.message);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
 export const signupController = async (req, res) => {
@@ -35,12 +62,11 @@ export const signupController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error(err);
+        console.error("Unexpeted error occurred: ", err.message);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
-// WebSocket can be created here
 export const loginController = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -79,34 +105,13 @@ export const loginController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error(err);
+        console.error("Unexpeted error occurred: ", err.message);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
-// WebSocket can be verified and if doesn't exists, created here
 export const refreshController = async (req, res) => {
     try {
-        const currRefreshToken = req.cookies.refreshToken;
-        const userDoc = await User.findById(req.params.userId);
-
-        if (!(await bcrypt.compare(currRefreshToken, userDoc.refreshToken))) {
-            return res.status(400).json({ error: "Refresh token does not belong to user. Logout now" });
-        }
-
-        try {
-            const payload = jwt.verify(currRefreshToken, process.env.REFRESH_TOKEN_SECRET);
-            if (payload.userId !== req.params.userId) {
-                throw new Error("Wrong jwt");
-            }
-        }
-        catch (err) {
-            if (err.name === "TokenExpiredError") {
-                return res.status(401).json({ error: "JWT expired! Re-login to avail services!" });
-            }
-            return res.status(401).json({ error: "Cannot verify! Re-login to avail services!" });
-        }
-
         const accessToken = jwt.sign({ userId: userDoc._id }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: 15 * 60
         });
@@ -132,12 +137,11 @@ export const refreshController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error(err);
+        console.error("Unexpeted error occurred: ", err.message);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
-// WebSocket can be removed here
 export const logoutController = async (req, res) => {
     try {
         const userId = req.body.userId;
@@ -153,7 +157,7 @@ export const logoutController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error(err);
+        console.error("Unexpeted error occurred: ", err.message);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
