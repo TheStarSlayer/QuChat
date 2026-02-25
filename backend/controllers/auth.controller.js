@@ -5,15 +5,15 @@ import jwt from "jsonwebtoken";
 export const verifyStateController = async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
 
-    if (refreshToken === null) {
+    if (refreshToken === null)
         return res.status(401).json({ error: "User must login to avail services!" });
-    }
 
     try {
         const currRefreshToken = req.cookies.refreshToken;
-        
+        let payload;
+
         try {
-            const payload = jwt.verify(currRefreshToken, process.env.REFRESH_TOKEN_SECRET);    
+            payload = jwt.verify(currRefreshToken, process.env.REFRESH_TOKEN_SECRET);    
         }
         catch (err) {
             if (err.name === "TokenExpiredError") {
@@ -23,12 +23,11 @@ export const verifyStateController = async (req, res) => {
         }
 
         const userDoc = await User.findById(payload.userId);
-        if (userDoc.refreshToken === null) {
+        if (userDoc.refreshToken === null)
             return res.status(401).json({ error: "Refresh token should not exist! Re-login to avail services!" });
-        }
-        if (!(await bcrypt.compare(currRefreshToken, userDoc.refreshToken))) {
-            return res.status(400).json({ error: "Refresh token does not belong to user. Logout now" });
-        }
+        
+        if (!(await bcrypt.compare(currRefreshToken, userDoc.refreshToken)))
+            return res.status(400).json({ error: "Refresh token may be expired. Logout now" });
 
         return res.status(202).json({ msg: "User may attempt to refresh their access token" });
     }
@@ -47,7 +46,7 @@ export const signupController = async (req, res) => {
             return res.status(400).json({ error: "Username already exists!" });
 
         const pfpLink = `https://cdn.auth0.com/avatars/${username[0] + username[1]}.png`
-        const hashedPwd = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS));
+        const hashedPwd = await bcrypt.hash(password, process.env.SALT_ROUNDS);
 
         const newUser = await User.create({
             username: username,
@@ -86,7 +85,7 @@ export const loginController = async (req, res) => {
         const refreshToken = jwt.sign({ userId: userDoc._id }, process.env.REFRESH_TOKEN_SECRET, {
             expiresIn: "7d"
         });
-        userDoc.refreshToken = await bcrypt.hash(refreshToken, parseInt(process.env.SALT_ROUNDS));
+        userDoc.refreshToken = await bcrypt.hash(refreshToken, process.env.SALT_ROUNDS);
         userDoc.currentlyActive = true;
 
         await userDoc.save();
@@ -110,7 +109,7 @@ export const loginController = async (req, res) => {
     }
 };
 
-export const refreshController = async (req, res) => {
+export const refreshController = async (_, res) => {
     try {
         const accessToken = jwt.sign({ userId: userDoc._id }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: 15 * 60
@@ -118,7 +117,7 @@ export const refreshController = async (req, res) => {
         const refreshToken = jwt.sign({ userId: userDoc._id }, process.env.REFRESH_TOKEN_SECRET, {
             expiresIn: "7d"
         });
-        userDoc.refreshToken = await bcrypt.hash(refreshToken, parseInt(process.env.SALT_ROUNDS));
+        userDoc.refreshToken = await bcrypt.hash(refreshToken, process.env.SALT_ROUNDS);
         userDoc.currentlyActive = true;
 
         await userDoc.save();
