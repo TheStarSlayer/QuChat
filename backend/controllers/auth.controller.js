@@ -32,6 +32,10 @@ export const signupController = async (req, res) => {
 
 export const loginController = async (req, res) => {
     try {
+
+        if (req.cookies.refreshToken !== undefined)
+            return res.status(400).json({ error: "User is already logged in" });
+
         const { username, password } = req.body;
         const userDoc = await User.findOne({ username: username });
 
