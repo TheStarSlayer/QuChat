@@ -10,7 +10,7 @@ export const signupController = async (req, res) => {
         if (usernameExists)
             return res.status(400).json({ error: "Username already exists!" });
 
-        const pfpLink = `https://cdn.auth0.com/avatars/${username[0] + username[1]}.png`;
+        const pfpLink = `https://cdn.auth0.com/avatars/${username[0].toLowerCase() + username[1].toLowerCase()}.png`;
         const hashedPwd = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS));
 
         await User.create({
