@@ -39,9 +39,8 @@ A chat application that prioritizes privacy and end-to-end encryption using BB84
 
 - **Purpose:** application-level actions for discovering users and managing chat sessions
 - **Routes (current):**
-  - `GET /api/users` — view available users
-  - `POST /api/chat/request` — send a chat request to another user
-  - `GET /api/chat/eavesdrop` — attach as eavesdropper to a chat (single eavesdropper allowed)
-  - `POST /api/chat/send` — send a message within an active chat session
-  - `POST /api/chat/terminate` — gracefully terminate a private chat session
+  - `POST /api/requestChat/:username` — send a chat request to another user
+  - `GET /api/awaitingChatRequests` — view ongoing chat requests
+  - `POST /api/eavesdrop/:chatId` — eavesdrop private chat (1 eavesdropper allowed)
+  - `POST /api/terminate/:chatId` — gracefully terminate a private chat session
 - **Notes:** implement these under `backend/routes/` and map handlers to `backend/controllers/`. If using WebSockets, consider keeping chat message flows on the socket layer and using `/api` for control actions (request/terminate/metadata).
