@@ -44,10 +44,10 @@ export const loginController = async (req, res) => {
         if (!passwordsMatch)
             return res.status(400).json({ error: "Invalid credentials!" });
 
-        const accessToken = jwt.sign({ userId: userDoc._id }, process.env.ACCESS_TOKEN_SECRET, {
+        const accessToken = jwt.sign({ userId: username }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: 15 * 60
         });
-        const refreshToken = jwt.sign({ userId: userDoc._id }, process.env.REFRESH_TOKEN_SECRET, {
+        const refreshToken = jwt.sign({ userId: username }, process.env.REFRESH_TOKEN_SECRET, {
             expiresIn: "7d"
         });
 
@@ -90,17 +90,17 @@ export const refreshController = async (req, res) => {
             return res.status(401).json({ error: "Cannot verify! Re-login to avail services!" });
         }
 
-        const userDoc = await User.findById(payload.userId);
+        const userDoc = await User.findOne({ username: payload.userId });
         if (userDoc.refreshToken === null)
             return res.status(401).json({ error: "Refresh token should not exist! Re-login to avail services!" });
 
         if (!(await bcrypt.compare(currRefreshToken, userDoc.refreshToken)))
             return res.status(400).json({ error: "Refresh token may be expired. Logout now" });
 
-        const accessToken = jwt.sign({ userId: userDoc._id }, process.env.ACCESS_TOKEN_SECRET, {
+        const accessToken = jwt.sign({ userId: payload.userId }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: 15 * 60
         });
-        const refreshToken = jwt.sign({ userId: userDoc._id }, process.env.REFRESH_TOKEN_SECRET, {
+        const refreshToken = jwt.sign({ userId: payload.userId }, process.env.REFRESH_TOKEN_SECRET, {
             expiresIn: "7d"
         });
 
