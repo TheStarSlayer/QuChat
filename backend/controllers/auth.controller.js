@@ -1,7 +1,7 @@
-import { User, OnlineUsers } from "../models/user.model.js";
+import { User } from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { redisClient } from "../index.js";
+import { retrieveOnlineUsers } from "../lib/retrieveOnlineUsers.js";
 
 export const signupController = async (req, res) => {
     try {
@@ -62,15 +62,7 @@ export const loginController = async (req, res) => {
             path: "/auth"
         });
 
-        let onlineUsers;
-        try {
-            const onlineUsersObj = await redisClient.hGetAll("onlineUsers");
-            onlineUsers = Object.keys(onlineUsersObj);
-        }
-        catch (err) {
-            console.error("Unexpected error occurred", err.message);
-            onlineUsers = await OnlineUsers.find({ username: { $ne: username } }).project({ username: 1 });
-        }
+        const onlineUsers = retrieveOnlineUsers(username);
 
         return res.status(200).json({
             msg: "Logged in successfully!",
@@ -125,15 +117,7 @@ export const refreshController = async (req, res) => {
             path: "/auth"
         });
 
-        let onlineUsers;
-        try {
-            const onlineUsersObj = await redisClient.hGetAll("onlineUsers");
-            onlineUsers = Object.keys(onlineUsersObj);
-        }
-        catch (err) {
-            console.error("Unexpected error occurred", err.message);
-            onlineUsers = await OnlineUsers.find({ username: { $ne: username } }).project({ username: 1 });
-        }
+        const onlineUsers = retrieveOnlineUsers(payload.userId);
 
         return res.status(200).json({
             msg: "Refreshed access token!",
