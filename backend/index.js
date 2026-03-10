@@ -16,6 +16,10 @@ const io = new Server(8597, {
 });
 let redisClient;
 
+app.use(cors({
+    origin: ['http://localhost:8597', 'http://localhost:8595']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
