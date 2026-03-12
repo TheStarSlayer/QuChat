@@ -5,9 +5,10 @@ const requestSchema = new Schema({
     sender: String,
     receiver: String,
     createdOn: Date,
+    TimeLimitInSec: Number,
     eavesdropper: Boolean,
     eavesdropperId: String,
-    roomId: String
+    status: String
 });
 
 const RequestModel = model('RequestModel', requestSchema);
