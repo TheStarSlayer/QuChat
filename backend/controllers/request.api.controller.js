@@ -65,10 +65,12 @@ export const persistRequestController = async (req, res) => {
 
     // Persist request
     try {
-        await redisClient.zAdd('requestIndex', { score: createdOn.getTime(), value: senderId });
-        await redisClient.hSet(`request:${senderId}`, newRequestForED);
-
         await RequestModel.create(newRequest);
+
+        await redisClient.zAdd('allRequestIndex', { score: createdOn.getTime(), value: senderId });
+        await redisClient.zAdd('EDRequestIndex', { score: createdOn.getTime(), value: senderId });
+        await redisClient.hSet(`requester:${senderId}`, newRequest);
+        await redisClient.zAdd(`requestee:${receiverId}`, { score: createdOn.getTime(), value: senderId });
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);
@@ -83,14 +85,50 @@ export const persistRequestController = async (req, res) => {
     });
 };
 
+export const getRequestsToMeController = async (req, res) => {
+    const userId = req.userId;
+    let requests = null;
+
+    try {
+        const requestIndex = await redisClient.zRange(`requestee:${userId}`, 0, -1);
+        requests = requestIndex.map(async requester => {
+            const request = await redisClient.hGetAll(`requester:${requester}`);
+            return {
+                sender: request.sender,
+                receiver: request.receiver,
+                roomId: request.roomId,
+                createdOn: request.createdOn,
+                timeLimitInSec: request.timeLimitInSec
+            };
+        });
+    }
+    catch (err) {
+        console.error("Unexpected error occurred", err.message);
+
+        try {
+            requests = await RequestModel
+                .find({ receiver: userId, status: "pending" })
+                .select({ eavesdropper: 0, eavesdropperId: 0, status: 0, _id: 0 })
+                .sort({ createdOn: 1 })
+                .toArray();
+        }
+        catch (err) {
+            console.error("Unexpected error occurred", err.message);
+            return res.status(500).json({ msg: "Internal server error" });
+        }
+    }
+
+    return res.status(200).json(requests);
+};
+
 export const eavesdroppableRequestsController = async (_, res) => {
     let requests = null;
 
     try {
-        const requestIndex = await redisClient.zRange('requestIndex', 0, -1);
+        const requestIndex = await redisClient.zRange('EDRequestIndex', 0, -1);
 
         requests = requestIndex.map(async requester => {
-            const request = await redisClient.hGetAll(`request:${requester}`);
+            const request = await redisClient.hGetAll(`requester:${requester}`);
             return {
                 sender: request.sender,
                 receiver: request.receiver,
@@ -129,6 +167,12 @@ export const eavesdropController = async (req, res) => {
         const request = await RequestModel.findOneAndUpdate(findFilter, updateFilter);
         if (request === null)
             return res.status(404).json({ msg: "Cannot eavesdrop on this chat" });
+
+        await redisClient.multi()
+            .hSet(`requester:${senderId}`, "eavesdropper", true)
+            .hSet(`requester:${senderId}`, "eavesdropperId", eavesdropperId)
+            .zRem('EDRequestIndex', senderId)
+            .exec();
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);
@@ -144,15 +188,20 @@ export const finishRequestController = async (req, res) => {
     const finishStatus = req.body.finishStatus;
 
     try {
-        await redisClient.sRem('requestIndex', userId);
-        await redisClient.hDel(`request:${userId}`);
-
         const findFilter = { sender: userId, status: "pending" };
         const updateFilter = { status: finishStatus };
 
         const request = await RequestModel.findOneAndUpdate(findFilter, updateFilter);
         if (request === null)
             return res.status(404).json({ msg: "Request from this user does not exist" });
+
+        const requestee = await redisClient.hGet(`requester:${userId}`, receiver);
+        await redisClient.multi()
+            .zRem('allRequestIndex', userId)
+            .zRem('EDRequestIndex', userId)
+            .del(`requester:${userId}`)
+            .zRem(`requestee:${requestee}`, userId)
+            .exec();
 
         io.emit("removeRequest", userId);
         return res.status(204);
