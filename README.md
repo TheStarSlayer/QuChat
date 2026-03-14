@@ -60,12 +60,13 @@ A chat application that prioritizes privacy and end-to-end encryption using BB84
 - **Purpose:** application-level actions for discovering users and managing chat sessions
 - **Routes (current):**
   - `GET /api/verify` — verify entry to homepage
-  - `PATCH /api/hideUser` — hide user from list of available users (TODO)
-  - `PATCH /api/unhideUser` — unhide user from list of available users (TODO)
+  - `GET /api/getOnlineUsers` — get list of online users
+  - `PATCH /api/setToBusy` — set user status to busy
+  - `PATCH /api/setToAvailable` — set user status to available
   - `POST /api/persistRequest` — persist chat request to another user in database
-  - `DELETE /api/deleteRequest` — delete chat request in database
-  - `GET /api/awaitingRequests` — view ongoing chat requests
+  - `GET /api/getEavesdroppableRequests` — get requests that can be eavesdropped on
   - `PATCH /api/eavesdrop/:roomId` — eavesdrop private chat (1 eavesdropper allowed)
+  - `DELETE /api/finishRequest` — finish request and remove from database
   - `POST /api/generateKey` — generate a new key for the chat session (Make call to QKD API) (TODO)
   - `POST /api/terminate/:roomId` — gracefully terminate a private chat session
 - **Notes:** implement these under `backend/routes/` and map handlers to `backend/controllers/`. If using WebSockets, consider keeping chat message flows on the socket layer and using `/api` for control actions (request/terminate/metadata).
