@@ -1,7 +1,6 @@
 import { User } from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import retrieveOnlineUsers from "../lib/retrieveOnlineUsers.js";
 
 export const signupController = async (req, res) => {
     try {
@@ -65,12 +64,9 @@ export const loginController = async (req, res) => {
             path: "/auth"
         });
 
-        const onlineUsers = retrieveOnlineUsers(username);
-
         return res.status(200).json({
             msg: "Logged in successfully!",
-            accessToken: accessToken,
-            onlineUsers
+            accessToken: accessToken
         });
     }
     catch (err) {
@@ -120,12 +116,9 @@ export const refreshController = async (req, res) => {
             path: "/auth"
         });
 
-        const onlineUsers = retrieveOnlineUsers(payload.userId);
-
         return res.status(200).json({
             msg: "Refreshed access token!",
-            accessToken: accessToken,
-            onlineUsers
+            accessToken: accessToken
         });
     }
     catch (err) {
