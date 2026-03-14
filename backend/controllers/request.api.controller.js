@@ -67,10 +67,12 @@ export const persistRequestController = async (req, res) => {
     try {
         await RequestModel.create(newRequest);
 
-        await redisClient.zAdd('allRequestIndex', { score: createdOn.getTime(), value: senderId });
-        await redisClient.zAdd('EDRequestIndex', { score: createdOn.getTime(), value: senderId });
-        await redisClient.hSet(`requester:${senderId}`, newRequest);
-        await redisClient.zAdd(`requestee:${receiverId}`, { score: createdOn.getTime(), value: senderId });
+        await redisClient.multi()
+            .zAdd('allRequestIndex', { score: createdOn.getTime(), value: senderId })
+            .zAdd('EDRequestIndex', { score: createdOn.getTime(), value: senderId })
+            .hSet(`requester:${senderId}`, newRequest)
+            .zAdd(`requestee:${receiverId}`, { score: createdOn.getTime(), value: senderId })
+            .exec();
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);
