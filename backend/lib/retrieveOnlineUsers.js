@@ -16,7 +16,7 @@ const retrieveOnlineUsers = async (currUserId) => {
         try {
             onlineUsers = await OnlineUsers
                 .find({ username: { $ne: currUserId }, isBusy: false })
-                .project({ isBusy: 0, _id: 0 })
+                .select({ isBusy: 0, _id: 0 })
                 .toArray();
         }
         catch (err) {
