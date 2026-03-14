@@ -146,9 +146,7 @@ export const logoutController = async (req, res) => {
 
         res.clearCookie('refreshToken');
 
-        const userDoc = await User.findById(userId);
-        userDoc.refreshToken = null;
-        await userDoc.save();
+        await User.findOneAndUpdate({ username: userId }, { refreshToken: null });
 
         return res.status(200).json({
             msg: "Logged out"
