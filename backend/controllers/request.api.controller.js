@@ -1,8 +1,8 @@
 import RequestModel from "../models/requests.model.js";
 import { redisClient } from "../index.js";
 import io from "../io.index.js";
-import { OnlineUsers } from "../models/user.model.js";
 import checkIfOnline from "../lib/checkIfOnline.js";
+import finishRequest from "../lib/finishRequest.js";
 
 export const persistRequestController = async (req, res) => {
     const { receiverId, createdOn, timeLimitInSec } = req.body;
@@ -169,27 +169,8 @@ export const finishRequestController = async (req, res) => {
     const userId = req.userId;
     const finishStatus = req.body.finishStatus;
 
-    try {
-        const findFilter = { sender: userId, status: "pending" };
-        const updateFilter = { status: finishStatus };
-
-        const request = await RequestModel.findOneAndUpdate(findFilter, updateFilter);
-        if (request === null)
-            return res.status(404).json({ msg: "Request from this user does not exist" });
-
-        const requestee = await redisClient.hGet(`requester:${userId}`, receiver);
-        await redisClient.multi()
-            .zRem('allRequestIndex', userId)
-            .zRem('EDRequestIndex', userId)
-            .del(`requester:${userId}`)
-            .zRem(`requestee:${requestee}`, userId)
-            .exec();
-
-        io.emit("removeRequest", userId);
+    const result = await finishRequest(userId, finishStatus);
+    if (result)
         return res.status(204);
-    }
-    catch (err) {
-        console.error("Unexpected error occurred", err.message);
-        return res.status(500).json({ msg: "Internal server error" });
-    }
+    return res.status(500).json({ msg: "Internal server error" });
 };
