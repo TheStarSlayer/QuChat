@@ -12,6 +12,10 @@ const io = new Server(IO_PORT, {
 io.use(ioAuth);
 io.on("connection", async socket => {
     await socketConnectEvent(socket);
+    socket.on("joinRoom", (receiverId, request) => sendJoinRequest(socket, receiverId, request));
+    socket.on("accept", roomId => acceptEvent(socket, roomId));
+    socket.on("reject", roomId => rejectEvent(socket, roomId));
+    socket.on("sendMessage", (roomId, encryptedMessage) => sendMessageEvent(socket, roomId, encryptedMessage));
     socket.on("disconnect", () => socketDisconnectEvent(socket));
 });
 
