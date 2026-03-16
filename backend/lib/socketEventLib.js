@@ -1,5 +1,6 @@
 import { redisClient } from "../index.js";
 import { OnlineUsers } from "../models/user.model.js";
+import checkIfOnline from "./checkIfOnline.js";
 
 export const socketConnectEvent = async (socket) => {
     try {
@@ -18,37 +19,27 @@ export const socketConnectEvent = async (socket) => {
 };
 
 export const sendJoinRequest = async (socket, request) => {
-    try {
-        const isReceiverOnline = await redisClient.sIsMember('onlineUsers', request.receiver);
-        if (!isReceiverOnline)
-            return socket.emit("requestFailed", "User is not available for requests");
+    const isReceiverOnline = await checkIfOnline(request.receiver);
+    if (!isReceiverOnline)
+        return socket.emit("requestFailed", "User is not available for requests");
 
-        socket.to(request.receiver).emit("requestToJoin", request);
-    }
-    catch (err) {
-        console.error("Unexpected error occurred", err.message);
-
-        try {
-            const isReceiverOnline = await OnlineUsers.exists({ username: request.receiver });
-
-            if (!isReceiverOnline)
-                return socket.emit("requestFailed", "User is not available for requests");
-
-            socket.to(request.receiver).emit("requestToJoin", request);
-        }
-        catch (err) {
-            console.error("Unexpected error occurred", err.message);
-            return socket.emit("requestFailed", "Unexpected error occurred");
-        }
-    }
+    socket.to(request.receiver).emit("requestToJoin", request);
 };
 
-export const acceptEvent = (socket, roomId) => {
+export const acceptEvent = async (socket, roomId) => {
+    const isSenderOnline = await checkIfOnline(roomId);
+    if (!isSenderOnline)
+        return socket.emit("requestFailed", "User is not available for requests");
+
     socket.join(roomId);
     socket.to(roomId).emit("response", "accepted");
 };
 
-export const rejectEvent = (socket, roomId) => {
+export const rejectEvent = async (socket, roomId) => {
+    const isSenderOnline = await checkIfOnline(roomId);
+    if (!isSenderOnline)
+        return socket.emit("requestFailed", "User is not available for requests");
+
     socket.to(roomId).emit("response", "rejected");
 };
 
@@ -56,6 +47,12 @@ export const sendMessageEvent = (socket, roomId, encryptedMessage) => {
     socket.to(roomId).emit(encryptedMessage);
 };
 
+/**
+ * Must handle the following events:
+ * - disconnect on idle
+ * - disconnect on waiting state (request, key generation)
+ * - disconnect on chat session
+ */
 export const socketDisconnectEvent = async (socket) => {
     try {
         await OnlineUsers.deleteOne({ username: socket.userId });
