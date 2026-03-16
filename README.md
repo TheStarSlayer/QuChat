@@ -79,3 +79,29 @@ A chat application that prioritizes privacy and end-to-end encryption using BB84
   - `POST /api/generateKey` — generate a new key for the chat session (Make call to QKD API) (TODO)
   - `POST /api/terminate/:roomId` — gracefully terminate a private chat session
 - **Notes:** implement these under `backend/routes/` and map handlers to `backend/controllers/`. If using WebSockets, consider keeping chat message flows on the socket layer and using `/api` for control actions (request/terminate/metadata).
+
+### Socket Events
+
+#### Client-Side Emissions (Handled by Server)
+
+- **`sendJoinRequest`**: Initiates a chat request to another user. Server validates receiver's availability before forwarding.
+- **`eavesdropRequest`**: Requests to join an existing chat room as an eavesdropper.
+- **`accept`**: Emitted by a user to accept an incoming chat request.
+- **`reject`**: Emitted by a user to reject an incoming chat request.
+- **`joinAck`**: Acknowledges joining a chat session room.
+- **`sendMessage`**: Sends an encrypted message to the users in the specified chat room.
+- **`leave`**: Leaves the specified chat room, clearing the session data.
+- **`disconnect`**: Automatically sent when the client disconnects. Triggers server-side session cleanup, stops active requests, and notifies other relevant users.
+
+#### Server-Side Emissions (Handled by Client)
+
+- **`newUser`**: Broadcasted to all clients when a new user connects and comes online.
+- **`userLeft`**: Broadcasted to all clients when a user goes offline or disconnects.
+- **`requestFailed`**: Sent to a specific client when their request (join, eavesdrop, accept, etc.) fails because the target user is unavailable or disconnected.
+- **`requestToJoin`**: Sent to the receiver of a chat request, containing the request details.
+- **`requestForED`**: Broadcasted to all clients when a new chat request is created, making it available for potential eavesdroppers.
+- **`removeRequestForED`**: Broadcasted to all clients when a chat request is no longer available for eavesdropping.
+- **`response`**: Sent to the sender of a chat request indicating if the request was `"accepted"` or `"rejected"`.
+- **`ack`**: Sent to coordinate state and successfully acknowledge that the user has joined the room.
+- **`message`**: Delivers an encrypted message to users in a chat room.
+- **`sessionDisturbed`**: Emitted to participants of an active chat room if a member unexpectedly disconnects, prompting a clear-out on the client.
