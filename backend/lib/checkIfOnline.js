@@ -1,3 +1,6 @@
+import { redisClient } from "../index.js";
+import { OnlineUsers } from "../models/user.model.js";
+
 const checkIfOnline = async (userId) => {
     let isOnline = false;
 

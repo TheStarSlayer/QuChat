@@ -11,7 +11,7 @@ export const ioAuth = async (socket, next) => {
 
         let userExists;
         try {
-            userExists = await redisClient.hExists("onlineUsers", userId);
+            userExists = await redisClient.sIsMember("onlineUsers", userId);
         }
         catch (err) {
             console.error("Unexpected error occurred", err.message);
