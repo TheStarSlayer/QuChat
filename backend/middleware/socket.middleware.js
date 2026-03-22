@@ -25,6 +25,7 @@ export const ioAuth = async (socket, next) => {
         next();
     }
     catch (err) {
+        console.error(err.message);
         next(err);
     }
 }
