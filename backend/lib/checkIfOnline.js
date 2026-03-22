@@ -5,7 +5,7 @@ const checkIfOnline = async (userId) => {
     let isOnline = false;
 
     try {
-        isOnline = await redisClient.sIsMember('onlineUsers', userId);
+        isOnline = (await redisClient.zScore('onlineUsers', userId)) !== null;
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);

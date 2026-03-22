@@ -31,7 +31,7 @@ A chat application that prioritizes privacy and end-to-end encryption using BB84
 
 ### Redis Data Structures
 
-- **`onlineUsers`** - Set - value(s): `userId`
+- **`onlineUsers`** - Sorted Set - value: `userId`; score: loggedAt (retrieve by newest logged in user)
 - **`allRequestIndex`** - Sorted Set - value: `senderId`; score: created time (for all requests)
 - **`EDRequestIndex`** - Sorted Set - value: `senderId`; score: created time (for eavesdroppable requests)
 - **`requester:{senderId}`** - Hash Set - value: `sender`, `receiver`, `roomId`, `createdOn`, `timeLimitInSec`

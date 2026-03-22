@@ -6,11 +6,16 @@ import finishRequest from "./finishRequest.js";
 
 export const socketConnectEvent = async (socket) => {
     try {
+        const loggedAt = Date.now();
+
         await OnlineUsers.create({
             username: socket.userId,
+            loggedAt: loggedAt,
             isBusy: false
         });
-        await redisClient.sAdd("onlineUsers", socket.userId);
+        await redisClient.zAdd("onlineUsers", {
+            score: loggedAt, value: socket.userId
+        });
 
         socket.chatSession = false;
         socket.requestWaitSession = false;
@@ -92,10 +97,10 @@ export const leaveEvent = async (socket, roomId) => {
  * - disconnect on eavesdropping
  * - disconnect on chat session
  */
-export const socketDisconnectEvent = async (io, socket) => {
+export const socketDisconnectEvent = async (socket) => {
     try {
         await OnlineUsers.deleteOne({ username: socket.userId });
-        await redisClient.hDel("onlineUsers", socket.userId);
+        await redisClient.zRem("onlineUsers", socket.userId);
 
         if (socket.requestWaitSession) {
             socket.to(socket.requestWaitSession).emit("requestFailed", "User disconnected");
