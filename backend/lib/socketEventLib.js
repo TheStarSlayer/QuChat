@@ -91,8 +91,30 @@ export const joinAckEvent = async (socket, roomId, ack) => {
     socket.chatSession = roomId;
 };
 
-export const sendMessageEvent = (socket, roomId, encryptedMessage) => {
-    socket.to(roomId).emit("message", encryptedMessage);
+// First call by receiver only, then sender in response to receiver
+export const shareBasesEvent = (socket, roomId, bases) => {
+    socket.to(roomId).emit("bases", {
+        bases: bases,
+        sender: socket.userId
+    });
+};
+
+// Emitted by sender only
+export const calculateQBEREvent = (socket, roomId, subset) => {
+    // subset : { randIndex: [], randReceiverKey: [] }
+    socket.to(roomId).emit("qber", subset);
+};
+
+// Emitted by receiver only
+export const shareQBERResultEvent = (socket, roomId, qberSatisfied) => {
+    socket.to(roomId).emit("qberResult", qberSatisfied);
+}
+
+export const sendMessageEvent = (socket, roomId, message) => {
+    socket.to(roomId).emit("message", {
+        message: message,
+        sender: socket.userId
+    });
 };
 
 export const sessionEndEvent = (socket, roomId) => {

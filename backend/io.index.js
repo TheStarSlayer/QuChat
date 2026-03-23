@@ -23,6 +23,15 @@ export default socketInit = (io) => {
         socket.on("joinAck", async (roomId, ack) =>
             await joinAckEvent(socket, roomId, ack));
 
+        socket.on("shareBases", (roomId, bases) =>
+            shareBasesEvent(socket, roomId, bases));
+
+        socket.on("calculateQBER", (roomId, subset) =>
+            calculateQBEREvent(socket, roomId, subset));
+
+        socket.on("shareQBERResult", (roomId, qberSatisfied) =>
+            shareQBERResultEvent(socket, roomId, qberSatisfied));
+
         socket.on("sendMessage", (roomId, encryptedMessage) =>
             sendMessageEvent(socket, roomId, encryptedMessage));
 
