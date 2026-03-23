@@ -1,4 +1,5 @@
 import { User } from "../models/user.model.js";
+import checkIfOnline from "../lib/checkIfOnline.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -46,6 +47,9 @@ export const loginController = async (req, res) => {
 
         if (!passwordsMatch)
             return res.status(400).json({ error: "Invalid credentials!" });
+
+        if (await checkIfOnline(username))
+            return res.status(400).json({ error: "User is already logged in" });
 
         const accessToken = jwt.sign({ userId: username }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: 15 * 60
