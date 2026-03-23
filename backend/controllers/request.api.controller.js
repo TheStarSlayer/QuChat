@@ -109,7 +109,7 @@ export const getMyActiveRequestsController = async (req, res) => {
     return res.status(200).json(requests);
 };
 
-export const eavesdroppableRequestsController = async (_, res) => {
+export const eavesdroppableRequestsController = async (req, res) => {
     let requests = null;
 
     try {
@@ -127,14 +127,18 @@ export const eavesdroppableRequestsController = async (_, res) => {
                     chatSessionTimeInMin: request.chatSessionTimeInMin
                 };
             })
-            .filter(request => request.receiver !== req.userId);
+            .filter(request => request.sender !== req.userId && request.receiver !== req.userId);
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);
 
         try {
             requests = await RequestModel
-                .find({ receiver: { $ne: req.userId }, eavesdropper: false, status: "pending" })
+                .find({
+                    sender: { $ne: req.userId },
+                    receiver: { $ne: req.userId },
+                    eavesdropper: false, status: "pending"
+                })
                 .select({ eavesdropper: 0, eavesdropperId: 0, status: 0, _id: 0 })
                 .sort({ createdOn: 1 })
                 .toArray();
