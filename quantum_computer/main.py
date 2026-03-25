@@ -14,14 +14,14 @@ q_service = QiskitRuntimeService(
     instance="quchat-key"
 )
 
-q_backend = q_service.least_busy(min_num_qubits=32)
-pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
-sampler = Sampler(q_backend)
-
 @app.get("/rng/{bit_length}/{no_of_shots}")
 async def random_num_generator(bit_length, no_of_shots):
     if (bit_length < 1 or bit_length > 32 or no_of_shots < 1):
         return
+    
+    q_backend = q_service.least_busy(min_num_qubits=32)
+    pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
+    sampler = Sampler(q_backend)
     
     qc = QuantumCircuit(bit_length, bit_length)
     qc.h(range(bit_length))
