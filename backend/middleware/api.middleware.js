@@ -8,7 +8,9 @@ export const apiVerify = async (req, res, next) => {
         return res.status(401).json({ error: 'Invalid auth token' });
 
     try {
-        const payload = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        const payload = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, {
+            algorithms: ["HS256"]
+        });
         req.userId = payload.userId;
         next();
     }

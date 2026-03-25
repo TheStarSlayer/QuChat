@@ -52,10 +52,12 @@ export const loginController = async (req, res) => {
             return res.status(400).json({ error: "User is already logged in" });
 
         const accessToken = jwt.sign({ userId: username }, process.env.ACCESS_TOKEN_SECRET, {
-            expiresIn: 15 * 60
+            expiresIn: 15 * 60,
+            algorithm: "HS256"
         });
         const refreshToken = jwt.sign({ userId: username }, process.env.REFRESH_TOKEN_SECRET, {
-            expiresIn: "7d"
+            expiresIn: "7d",
+            algorithm: "HS256"
         });
 
         userDoc.refreshToken = await bcrypt.hash(refreshToken, parseInt(process.env.SALT_ROUNDS));
@@ -88,7 +90,9 @@ export const refreshController = async (req, res) => {
 
         let payload;
         try {
-            payload = jwt.verify(currRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+            payload = jwt.verify(currRefreshToken, process.env.REFRESH_TOKEN_SECRET, {
+                algorithms: ["HS256"]
+            });
         }
         catch (err) {
             if (err.name === "TokenExpiredError")
@@ -104,10 +108,12 @@ export const refreshController = async (req, res) => {
             return res.status(400).json({ error: "Refresh token may be expired. Logout now" });
 
         const accessToken = jwt.sign({ userId: payload.userId }, process.env.ACCESS_TOKEN_SECRET, {
-            expiresIn: 15 * 60
+            expiresIn: 15 * 60,
+            algorithm: "HS256"
         });
         const refreshToken = jwt.sign({ userId: payload.userId }, process.env.REFRESH_TOKEN_SECRET, {
-            expiresIn: "7d"
+            expiresIn: "7d",
+            algorithm: "HS256"
         });
 
         userDoc.refreshToken = await bcrypt.hash(refreshToken, parseInt(process.env.SALT_ROUNDS));
@@ -138,7 +144,10 @@ export const logoutController = async (req, res) => {
         if (refreshToken === undefined)
             return res.status(400).json({ error: "Refresh token does not exist. User may already be logged out!" });
 
-        const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, { ignoreExpiration: true });
+        const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, { 
+            ignoreExpiration: true,
+            algorithms: ["HS256"] 
+        });
         const userId = payload.userId;
 
         res.clearCookie('refreshToken');
