@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from typing import Literal
 
@@ -38,7 +38,7 @@ async def authorize_call(
     
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail={"error": "Unauthorized"})
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
 
     import jwt
     
@@ -46,7 +46,7 @@ async def authorize_call(
     try:
         payload = jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
     except:
-        raise HTTPException(status_code=401, detail={"error": "Unauthorized"})
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
 
     request.state.user = payload.userId
     return await call_next(request)
@@ -64,14 +64,14 @@ async def random_num_generator(
     if (bit_length < 1 or bit_length > 156 or no_of_shots < 1):
         return []
     
+    qc = QuantumCircuit(bit_length)
+    qc.h(range(bit_length))
+    qc.measure_all()
+    
     if (typeOfMachine == "sim"):
         q_backend = AerSimulator.from_backend(FakeMarrakesh())
     else:
         q_backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
-    
-    qc = QuantumCircuit(bit_length)
-    qc.h(range(bit_length))
-    qc.measure_all()
     
     pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
     isa_circuit = pm.run(qc)
@@ -86,7 +86,7 @@ async def random_num_generator(
     result = job.result()
     counts = result[0].data.meas.get_counts()
     
-    return JSONResponse(status_code=200, content={ "randomBitstrings": list(counts.keys()) })
+    return list(counts.keys())
 
 @app.get("/distributeRawKey/{roomId}/{typeOfMachine}")
 async def distribute_raw_key(
@@ -107,9 +107,9 @@ async def distribute_raw_key(
     request = requests.find_one(request_find_filter, request_select_filter)
     
     if not request:
-        raise HTTPException(
+        return JSONResponse(
             status_code=404,
-            detail={ "error": "Room ID does not exist" }
+            content={ "error": "Room ID does not exist" }
         )
         
     userId = request.state.user
@@ -153,17 +153,21 @@ async def distribute_raw_key(
         metadata = circuit_metadata.find_one(metadata_find_filter, metadata_select_filter)
 
         if not metadata:
-            return { "message": "Call again later" }
+            return JSONResponse(
+                status_code=425,
+                content={ "message": "Call again later" }
+            )
         
         circuit_metadata.update_one(metadata_find_filter, { "$set": { "generatingMetadata": True } })
         
         bases = (await random_num_generator(typeOfMachine=typeOfMachine))[0]
         
-        observed_bits = generateAndRunBB84Circuit(
-            bit_length=156,
+        observed_bits = await generateAndRunBB84Circuit(
             sender_bits=metadata.senderBits,
             sender_bases=metadata.senderBases,
-            receiver_bases=bases
+            receiver_bases=bases,
+            typeOfMachine=typeOfMachine,
+            bit_length=156
         )
         
         if userId == request.eavesdropperId:
@@ -182,16 +186,58 @@ async def distribute_raw_key(
             content={ "bases": bitstrings[0], "bits": bitstrings[1] }
         )  
         
-    raise HTTPException(
+    return JSONResponse(
         status_code=400,
-        detail={ "error": "User is not related to request" }
+        content={ "error": "User is not related to request" }
     )
-    
-def generateAndRunBB84Circuit(
+
+@app.get("/generateAndRunBB84Circuit")
+async def generateAndRunBB84Circuit(
     sender_bits: str,
     sender_bases: str,
     receiver_bases: str,
+    typeOfMachine: Literal["sim", "hw"],
     bit_length: int = 156,
 ) -> str | None:
+    """
+        Default base: Z (0)
+        Bits: 0 -> |0>
+              1 -> |1>
+              
+        Alternate base: X (1)
+        Bits: 0 -> |+>
+              1 -> |->
+    """
+    qc = QuantumCircuit(bit_length)
     
-    pass
+    for i in range(bit_length):
+        if sender_bases[i] == '1':
+            qc.h(i)
+        
+        if sender_bits[i] == '1':
+            qc.x(i)
+            
+        if receiver_bases[i] == '1':
+            qc.h(i)
+            
+    qc.measure_all()
+    
+    if (typeOfMachine == "sim"):
+        q_backend = AerSimulator.from_backend(FakeMarrakesh())
+    else:
+        q_backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
+    
+    pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
+    isa_circuit = pm.run(qc)
+
+    if (typeOfMachine == 'sim'):
+        sampler = AerSampler()
+        job = sampler.run([isa_circuit], shots=1)
+    else:
+        sampler = Sampler(q_backend)
+        job = sampler.run([isa_circuit], shots=1)
+    
+    result = job.result()
+    counts = result[0].data.meas.get_counts()
+    
+    return list(counts.keys())[0]
