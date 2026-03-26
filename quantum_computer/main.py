@@ -88,30 +88,31 @@ async def random_num_generator(
     
     return list(counts.keys())
 
-@app.get("/distributeRawKey/{roomId}/{typeOfMachine}")
+@app.get("/distributeRawKey/{roomId}")
 async def distribute_raw_key(
     request: Request,
     roomId: str,
-    typeOfMachine: Literal["sim", "hw"]
 ):
     requests = database["requestmodels"]
     
     request_find_filter = {
         "sender": roomId,
-        "status": "pending"
+        "status": "accepted"
     }
     request_select_filter = {
         "sender": 1, "receiver": 1, "_id": 0,
-        "eavesdropper": 1, "eavesdropperId": 1
+        "eavesdropper": 1, "eavesdropperId": 1,
+        "isSimulator": 1
     }
-    request = requests.find_one(request_find_filter, request_select_filter)
+    roomRequest = requests.find_one(request_find_filter, request_select_filter)
     
-    if not request:
+    if not roomRequest:
         return JSONResponse(
             status_code=404,
             content={ "error": "Room ID does not exist" }
         )
         
+    typeOfMachine = "sim" if roomRequest.isSimulator else "hw"
     userId = request.state.user
     circuit_metadata = database["circuit_metadata"]
     

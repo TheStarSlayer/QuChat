@@ -5,7 +5,12 @@ import checkIfOnline from "../lib/checkIfOnline.js";
 import finishRequest from "../lib/finishRequest.js";
 
 export const persistRequestController = async (req, res) => {
-    const { receiverId, timeLimitInMs, typeOfEncryption, chatSessionTimeInMin } = req.body;
+    const { 
+        receiverId, timeLimitInMs,
+        typeOfEncryption, chatSessionTimeInMin,
+        isSimulator 
+    } = req.body;
+
     const createdOn = Date.now();
     const senderId = req.userId;
 
@@ -37,7 +42,8 @@ export const persistRequestController = async (req, res) => {
         createdOn,
         timeLimitInMs,
         typeOfEncryption,
-        chatSessionTimeInMin
+        chatSessionTimeInMin,
+        isSimulator
     };
 
     const newRequest = {
@@ -84,6 +90,7 @@ export const getMyActiveRequestsController = async (req, res) => {
                 sender: request.sender,
                 receiver: request.receiver,
                 createdOn: request.createdOn,
+                isSimulator: request.isSimulator,
                 timeLimitInMs: request.timeLimitInMs,
                 typeOfEncryption: request.typeOfEncryption,
                 chatSessionTimeInMin: request.chatSessionTimeInMin
@@ -122,6 +129,7 @@ export const eavesdroppableRequestsController = async (req, res) => {
                     sender: request.sender,
                     receiver: request.receiver,
                     createdOn: request.createdOn,
+                    isSimulator: request.isSimulator,
                     timeLimitInMs: request.timeLimitInMs,
                     typeOfEncryption: request.typeOfEncryption,
                     chatSessionTimeInMin: request.chatSessionTimeInMin
