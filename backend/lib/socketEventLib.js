@@ -46,6 +46,7 @@ export const eavesdropRequestEvent = async (socket, roomId) => {
 
     socket.join(roomId);
     socket.eavesdropper = roomId;
+    socket.responseWaitSession = roomId;
 };
 
 export const acceptEvent = async (socket, roomId) => {
@@ -59,6 +60,12 @@ export const acceptEvent = async (socket, roomId) => {
     socket.to(roomId).emit("response", "accepted"); // sender calls finishRequest(accepted)
 };
 
+// Called when response is accepted
+export const updateSocketDataWhenAccepted = (socket, roomId) => {
+    socket.responseWaitSession = false;
+    socket.ackWaitSession = roomId;
+};
+
 export const rejectEvent = async (socket, roomId) => {
     const isSenderOnline = await checkIfOnline(roomId);
     if (!isSenderOnline)
@@ -67,28 +74,24 @@ export const rejectEvent = async (socket, roomId) => {
     socket.to(roomId).emit("response", "rejected"); // sender calls finishRequest(rejected)
 };
 
-// Sender checks validity of request and sends ack (true or false)
+/**
+ * To send positive ack,
+ * check if request is still valid -> if not, send negative ack (leave room)
+ * call finishRequest(accepted)
+ * call distributeRawKey, after receiving result, send positive ack
+ * 
+ * On receiving ack by eavesdropper, distributeRawKey is called immediately (if exists) 
+ * On receiving ack by receiver, distributeRawKey is called after 5 seconds
+ */
 export const joinAckEvent = async (socket, roomId, ack) => {
     const isReceiverOnline = await checkIfOnline(roomId);
     if (!isReceiverOnline)
         return socket.emit("requestFailed", "User is not available for requests"); // call finishRequest(cancelled)
-
-    /**
-     * For receivers:
-     * 
-     *  If ack = true:
-     *   Set socket.chatSession & unset socket.ackWaitSession if not eavesdropper
-     * 
-     *  If ack = false:
-     *   Leave room
-     */
-    socket.to(roomId).emit("ack", ack);
+ 
+    socket.to(roomId).emit("ackFromHost", ack);
 
     if (!ack)
         return resetSocketStats(socket);
-
-    socket.responseWaitSession = false;
-    socket.chatSession = roomId;
 };
 
 // First call by receiver only, then sender in response to receiver
@@ -106,8 +109,19 @@ export const calculateQBEREvent = (socket, roomId, subset) => {
 };
 
 // Emitted by receiver only
+// If satisfied, set chatSession to roomId, else, reset everything else
 export const shareQBERResultEvent = (socket, roomId, qberSatisfied) => {
     socket.to(roomId).emit("qberResult", qberSatisfied);
+
+    if (qberSatisfied) {
+        socket.ackWaitSession = false;
+        socket.chatSession = roomId;
+    }
+}
+
+export const updateSocketDataWhenQBERAccepted = (socket, roomId) => {
+    socket.ackWaitSession = false;
+    socket.chatSession = roomId;
 }
 
 export const sendMessageEvent = (socket, roomId, message) => {
@@ -128,7 +142,6 @@ export const leaveEvent = async (socket, roomId) => {
     resetSocketStats(socket);
 };
 
-// Called when roomId == userId
 export const resetSocketStats = socket => {
     socket.chatSession = false;
     socket.responseWaitSession = false;
@@ -155,10 +168,15 @@ export const socketDisconnectEvent = async (socket) => {
         }
 
         if (socket.ackWaitSession) {
-            socket.to(socket.ackWaitSession).emit("requestFailed", "Receiver disconnected");
+            // Host calls deleteMetadata(roomId)
+            socket.to(socket.ackWaitSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
+
+            if (socket.userId == socket.ackWaitSession) {
+                fetch(`http://127.0.0.1/deleteMetadata/${socket.ackWaitSession}`);
+            }
         }
 
-        if (socket.eavesdropper) {
+        if (socket.eavesdropper && socket.responseWaitSession) {
             const senderId = socket.eavesdropper;
             const eavesdropperId = socket.userId;
 
