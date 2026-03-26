@@ -16,5 +16,5 @@ const onlineUsersSchema = new Schema({
 });
 
 const User = model('User', userSchema);
-const OnlineUsers = model('OnlineUsers', onlineUsersSchema);
+const OnlineUsers = model('OnlineUser', onlineUsersSchema);
 export { User, OnlineUsers };
