@@ -56,7 +56,7 @@ export const acceptEvent = async (socket, roomId) => {
     socket.join(roomId);
     socket.ackWaitSession = roomId;
 
-    socket.to(roomId).emit("response", "accepted");
+    socket.to(roomId).emit("response", "accepted"); // sender calls finishRequest(accepted)
 };
 
 export const rejectEvent = async (socket, roomId) => {

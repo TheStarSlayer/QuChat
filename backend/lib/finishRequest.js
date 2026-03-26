@@ -2,6 +2,10 @@ import io from "../io.index.js";
 import RequestModel from "../models/requests.model.js";
 import { redisClient } from "../index.js";
 
+/**
+ * finishStatus -> pending, accepted, cancelled
+ */
+
 const finishRequest = async (userId, finishStatus) => {
     try {
         const findFilter = { sender: userId, status: "pending" };
