@@ -17,9 +17,10 @@ export const socketConnectEvent = async (socket) => {
             score: loggedAt, value: socket.userId
         });
 
-        socket.chatSession = false;
         socket.responseWaitSession = false;
-        socket.ackWaitSession = false;
+        socket.keyGenSession = false;
+        socket.chatSession = false;
+        
         socket.eavesdropper = false;
 
         socket.join(socket.userId);
@@ -55,7 +56,7 @@ export const acceptEvent = async (socket, roomId) => {
         return socket.emit("requestFailed", "Host is not available");
 
     socket.join(roomId);
-    socket.ackWaitSession = roomId;
+    socket.keyGenSession = roomId;
 
     socket.to(roomId).emit("response", "accepted"); // sender calls finishRequest(accepted)
 };
@@ -63,7 +64,7 @@ export const acceptEvent = async (socket, roomId) => {
 // Called when response is accepted
 export const updateSocketDataWhenAccepted = (socket, roomId) => {
     socket.responseWaitSession = false;
-    socket.ackWaitSession = roomId;
+    socket.keyGenSession = roomId;
 };
 
 export const rejectEvent = async (socket, roomId) => {
@@ -114,13 +115,13 @@ export const shareQBERResultEvent = (socket, roomId, qberSatisfied) => {
     socket.to(roomId).emit("qberResult", qberSatisfied);
 
     if (qberSatisfied) {
-        socket.ackWaitSession = false;
+        socket.keyGenSession = false;
         socket.chatSession = roomId;
     }
 }
 
 export const updateSocketDataWhenQBERAccepted = (socket, roomId) => {
-    socket.ackWaitSession = false;
+    socket.keyGenSession = false;
     socket.chatSession = roomId;
 }
 
@@ -145,7 +146,7 @@ export const leaveEvent = async (socket, roomId) => {
 export const resetSocketStats = socket => {
     socket.chatSession = false;
     socket.responseWaitSession = false;
-    socket.ackWaitSession = false;
+    socket.keyGenSession = false;
     socket.eavesdropper = false;
 };
 
@@ -167,7 +168,7 @@ export const socketDisconnectEvent = async (socket) => {
             await finishRequest(socket.userId, "cancelled");
         }
 
-        if (socket.ackWaitSession) {
+        if (socket.keyGenSession) {
             // Host calls deleteMetadata(roomId)
             socket.to(socket.ackWaitSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
 
