@@ -19,6 +19,6 @@ apiRouter.post("/persistRequest", persistRequestController);
 apiRouter.get("/getMyActiveRequests", getMyActiveRequestsController);
 apiRouter.get("/getEavesdroppableRequests", eavesdroppableRequestsController);
 apiRouter.patch("/eavesdrop/:roomId", eavesdropController);
-apiRouter.delete("/finishRequest", finishRequestController);
+apiRouter.patch("/finishRequest", finishRequestController);
 
 export default apiRouter;
