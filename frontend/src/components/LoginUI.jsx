@@ -1,7 +1,6 @@
 import { useContext } from "react";
 import OnboardContext from "../contexts/OnboardContext";
 import WindowLoading from "./WindowLoading";
-import logo from "../assets/QuChat.png";
 
 export default function LoginUI() {
 	const { 
@@ -12,12 +11,14 @@ export default function LoginUI() {
 
 	return (
 		<div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-light">
-			<div className="card shadow-sm p-4" style={{ maxWidth: 420, width: "92%" }}>
-				<div className="text-center mb-3">
-					<img src={logo} alt="QuChat" style={{ height: 64, objectFit: "contain" }} />
+			<div className="card shadow-sm p-4" style={{ maxWidth: 420, width: "100%" }}>
+				<div className="text-center mt-2 mb-4">
+					<div className="quchat-logo" aria-label="QuChat"> 
+						<span className="qu">Qu</span><span className="chat">Chat</span>
+					</div>
 				</div>
 
-				<h4 className="mb-3 text-center">Welcome back</h4>
+				<h4 className="mt-2 mb-3 text-center">Welcome back</h4>
 
 				<div className="mb-3">
 					<label className="form-label">Username</label>

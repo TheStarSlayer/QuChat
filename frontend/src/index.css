@@ -109,3 +109,26 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* QuChat HTML logo */
+.quchat-logo {
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 4.5vw, 2rem);
+  display: inline-block;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.quchat-logo .qu {
+  color: rebeccapurple;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(170, 59, 255, 0.533), rgba(153, 31, 246, 0.417));
+}
+.quchat-logo .chat {
+  color: black;
+  margin-left: 6px;
+}
+@media (max-width: 576px) {
+  .quchat-logo { font-size: 1.25rem; }
+}
