@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import apiCaller from "../lib/api";
 import authCaller from "../lib/auth";
 import { toast } from "react-toastify";
-import LoginUI from "../components/LoginUI";
-import SignupUI from "../components/SignupUI";
+import LoginUI from "../components/OnboardComponents/LoginUI";
+import SignupUI from "../components/OnboardComponents/SignupUI";
 import OnboardContext from "../contexts/OnboardContext";
 
 function OnboardPage() {

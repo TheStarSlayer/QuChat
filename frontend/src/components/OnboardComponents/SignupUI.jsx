@@ -1,6 +1,6 @@
 import { useContext } from "react";
-import OnboardContext from "../contexts/OnboardContext";
-import WindowLoading from "./WindowLoading";
+import OnboardContext from "../../contexts/OnboardContext";
+import WindowLoading from "../GeneralComponents/WindowLoading";
 
 export default function SignupUI() {
 	const { 
