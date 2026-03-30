@@ -24,7 +24,12 @@ export const socketConnectEvent = async (socket) => {
         socket.eavesdropper = false;
 
         socket.join(socket.userId);
-        socket.broadcast.emit("newUser", socket.userId);
+
+        const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase()
+        socket.broadcast.emit("newUser", {
+            username: socket.userId,
+            profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png` 
+        });
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);

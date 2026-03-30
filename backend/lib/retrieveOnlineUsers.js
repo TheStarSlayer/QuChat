@@ -5,7 +5,8 @@ const retrieveOnlineUsers = async (currUserId) => {
     let onlineUsers;
     try {
         const onlineUsersObj = await redisClient.zRange("onlineUsers", 0, -1, { REV: true });
-        onlineUsers = onlineUsersObj.filter(username => username !== currUserId);
+        onlineUsers = onlineUsersObj.filter(username => username !== currUserId)
+            
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);
@@ -24,7 +25,10 @@ const retrieveOnlineUsers = async (currUserId) => {
         }
     }
 
-    return onlineUsers;
+    return onlineUsers.map(username => {
+        const profilePicAvtr = username[0].toLowerCase() + username[1].toLowerCase()
+        return { username: username, profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png`};
+    });;
 }
 
 export default retrieveOnlineUsers;

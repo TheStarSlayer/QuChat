@@ -38,7 +38,11 @@ export const setToAvailableController = async (req, res) => {
         await OnlineUsers.updateOne({ username: userId }, { isBusy: false, loggedAt: Date.now() });
         await redisClient.zAdd("onlineUsers", { score: Date.now(), value: userId });
 
-        io.emit('newUser', userId);
+        const profilePicAvtr = userId[0].toLowerCase() + userId[1].toLowerCase()
+        io.emit('newUser', {
+            username: userId,
+            profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png`
+        });
     }
     catch (err) {
         console.error("Unexpected error occurred", err.message);
