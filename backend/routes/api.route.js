@@ -7,8 +7,11 @@ import {
     getOnlineUsersController, verifyAccessTokenController,
     setToBusyController, setToAvailableController
 } from "../controllers/actions.api.controller.js";
+import { apiVerify } from "../middleware/api.middleware.js";
 
 const apiRouter = express.Router();
+
+apiRouter.use(apiVerify);
 
 apiRouter.get("/verify", verifyAccessTokenController);
 apiRouter.get("/getOnlineUsers", getOnlineUsersController);
