@@ -28,22 +28,21 @@ function OnboardPage() {
      * if ok, continue
      */
     useEffect(() => {
-        apiCaller.get("/verify")
-        .then((res) => {
-            console.log(res);
+        const navigateToHome = () => {
             navigate("/");
-        })
-        .catch((error) => {
-            console.log(error.response.data);
+            toast.info("You are already logged in!");
+        };
+
+        apiCaller.get("/verify")
+        .then(navigateToHome)
+        .catch(() => {
             authCaller.post("/refresh")
-            .then(() => {
-                navigate("/");
-            })
+            .then(navigateToHome)
             .catch(() => {
                 console.log("Login to avail services");
             });
         });
-    });
+    }, [navigate]);
 
     async function login() {
         try {
