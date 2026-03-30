@@ -35,7 +35,7 @@ export const signupController = async (req, res) => {
 export const loginController = async (req, res) => {
     try {
         if (req.cookies.refreshToken !== undefined)
-            return res.status(400).json({ error: "User is already logged in" });
+            return res.status(409).json({ error: "User is already logged in" });
 
         const { username, password } = req.body;
         const userDoc = await User.findOne({ username: username });
@@ -49,7 +49,7 @@ export const loginController = async (req, res) => {
             return res.status(400).json({ error: "Invalid credentials!" });
 
         if (await checkIfOnline(username))
-            return res.status(400).json({ error: "User is already logged in" });
+            return res.status(409).json({ error: "User is already logged in" });
 
         const accessToken = jwt.sign({ userId: username }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: 15 * 60,
