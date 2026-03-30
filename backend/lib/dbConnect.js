@@ -17,8 +17,8 @@ export const redisConnect = async () => {
             username: 'thestarslayer',
             password: process.env.REDIS_PASSWORD,
             socket: {
-                host: 'redis-10401.crce283.ap-south-1-2.ec2.cloud.redislabs.com',
-                port: 10401
+                host: 'redis-19217.c80.us-east-1-2.ec2.cloud.redislabs.com',
+                port: 19217
             }
         });
         client.on('error', (err) => {
