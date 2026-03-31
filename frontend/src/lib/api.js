@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const server = import.meta.env.VITE_SERVER_ADDR;
+
 const apiCaller = axios.create({
-    baseURL: "http://localhost:8596/api",
+    baseURL: `${server}/api`,
     headers: { "Authorization": localStorage.getItem("access-token") },
     withCredentials: true
 });

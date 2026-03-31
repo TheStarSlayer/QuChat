@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const server = import.meta.env.VITE_SERVER_ADDR;
+
 const authCaller = axios.create({
-    baseURL: "http://localhost:8596/auth",
+    baseURL: `${server}/auth`,
     withCredentials: true
 });
 
