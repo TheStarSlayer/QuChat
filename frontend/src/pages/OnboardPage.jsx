@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import apiCaller from "../lib/api";
 import authCaller from "../lib/auth";
 import { toast } from "react-toastify";
 import LoginUI from "../components/OnboardComponents/LoginUI";
 import SignupUI from "../components/OnboardComponents/SignupUI";
 import OnboardContext from "../contexts/OnboardContext";
+import checkAuth from "../lib/checkAuth";
 
 function OnboardPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -19,29 +19,8 @@ function OnboardPage() {
     
     const navigate = useNavigate();
 
-    /**
-     * checkAuth
-     * 
-     * call /api/verify -> if success, navigate to home
-     * call /auth/refresh -> if success, navigate to home
-     * 
-     * if ok, continue
-     */
     useEffect(() => {
-        const navigateToHome = () => {
-            navigate("/");
-            toast.info("You are already logged in!");
-        };
-
-        apiCaller.get("/verify")
-        .then(navigateToHome)
-        .catch(() => {
-            authCaller.post("/refresh")
-            .then(navigateToHome)
-            .catch(() => {
-                console.log("Login to avail services");
-            });
-        });
+        checkAuth(navigate, true);
     }, [navigate]);
 
     async function login() {
@@ -52,9 +31,9 @@ function OnboardPage() {
             navigate("/");
         }
         catch (error) {
-            if (error.response.status === 409)
+            if (error.response?.status === 409)
                 toast.error("User is already logged in!");
-            else if (error.response.status === 400)
+            else if (error.response?.status === 400)
                 toast.error("Invalid credentials!");
             else
                 toast.error("Unexpected error occurred!");

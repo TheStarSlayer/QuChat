@@ -8,8 +8,8 @@ export default async function logout(navigate) {
         navigate("/onboard");
     }
     catch (error) {
-        if (error.response.status === 500) {
-            toast.error("Could not logout -- internal server error");
+        if (error.response?.status === 500) {
+            toast.error("Could not logout - internal server error");
         }
     }
 }
