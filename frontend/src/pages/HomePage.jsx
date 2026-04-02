@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import checkAuth from "../lib/checkAuth";
 import apiCaller from "../lib/api";
 import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 import authCaller from "../lib/auth";
-import { set } from "mongoose";
 
 function HomePage() {
     const [userId, setUserId] = useState(null);

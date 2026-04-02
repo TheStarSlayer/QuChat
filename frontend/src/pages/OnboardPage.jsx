@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import LoginUI from "../components/OnboardComponents/LoginUI";
 import SignupUI from "../components/OnboardComponents/SignupUI";
 import OnboardContext from "../contexts/OnboardContext";
-import checkAuth from "../lib/checkAuth";
+import apiCaller from "../lib/api";
 
 function OnboardPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -20,7 +20,13 @@ function OnboardPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        checkAuth(navigate, true);
+        apiCaller.get("/verify")
+        .then(() => {
+            navigate("/");
+        })
+        .catch(() => {
+            toast.info("Login to avail services");
+        });
     }, [navigate]);
 
     async function login() {
