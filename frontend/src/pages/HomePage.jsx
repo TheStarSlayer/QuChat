@@ -6,6 +6,7 @@ import { io } from "socket.io-client";
 import authCaller from "../lib/auth";
 import Header from "../components/HomeComponents/Header";
 import OnlineUsers from "../components/HomeComponents/OnlineUsers";
+import ChatWindow from "../components/HomeComponents/ChatWindow";
 
 function HomePage() {
     const [userId, setUserId] = useState(null);
