@@ -17,6 +17,7 @@ function HomePage() {
     const navigate = useNavigate();
     const socketRef = useRef(null);
 
+    // Verify privelege and set userId
     useEffect(() => {
         apiCaller.get("/verify")
         .then((response) => {
@@ -56,8 +57,8 @@ function HomePage() {
             socket.disconnect();
         };
     }, []);
-
     
+    // Get online users and register corresponding event listeners
     useEffect(() => {
         async function getOnlineUsers() {
             try {
@@ -88,6 +89,7 @@ function HomePage() {
         };
     }, []);
 
+    // get my active requests and register corresponding event listeners
     useEffect(() => {
         async function getRequestsToMe() {
             try {
@@ -118,6 +120,7 @@ function HomePage() {
         };
     }, []);
 
+    // get eavesdroppable requests and register corresponding event listeners
     useEffect(() => {
         async function getEavesdroppableRequests() {
             try {
@@ -153,6 +156,20 @@ function HomePage() {
             socket.off("removeRequest");
         };
     }, [userId]);
+
+    return (
+        <>
+            <Header userId={userId}/>
+            
+            <OnlineUsers onlineUsers={onlineUsers} />
+
+            <ChatWindow eavesdroppableRequests={eavesdroppableRequests} requestsToMe={requestsToMe}
+                showRequestsToMe={showRequestsToMe} setShowRequestsToMe={setShowRequestsToMe}
+                showEavesdroppableRequests={showEavesdroppableRequests}
+                setShowEavesdroppableRequests={setShowEavesdroppableRequests}
+            />
+        </>
+    );
 }
 
 export default HomePage;
