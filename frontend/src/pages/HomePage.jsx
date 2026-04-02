@@ -159,8 +159,8 @@ function HomePage() {
 
     return (
         <>
-            <Header userId={userId}/>
-            
+            <Header userId={userId} navigate={navigate}/>
+
             <OnlineUsers onlineUsers={onlineUsers} />
 
             <ChatWindow eavesdroppableRequests={eavesdroppableRequests} requestsToMe={requestsToMe}
