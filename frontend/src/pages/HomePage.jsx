@@ -211,6 +211,7 @@ function HomePage() {
                 searchTerm={searchTermForUsers} setSearchTerm={setSearchTermForUsers}
                 setShowNewRequest={setShowNewRequest} setShowRequestsToMe={setShowRequestsToMe}
                 setShowEavesdroppableRequests={setShowEavesdroppableRequests}
+                showChatSession={showChatSession}
             />
 
             <HomeContext.Provider value={{
