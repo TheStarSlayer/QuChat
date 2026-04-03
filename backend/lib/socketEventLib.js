@@ -55,13 +55,16 @@ export const eavesdropRequestEvent = async (socket, roomId) => {
     socket.responseWaitSession = roomId;
 };
 
-export const acceptEvent = async (socket, roomId) => {
+export const acceptEvent = async (socket, roomId, typeOfEncryption) => {
     const isSenderOnline = await checkIfOnline(roomId);
     if (!isSenderOnline)
         return socket.emit("requestFailed", "Host is not available");
 
     socket.join(roomId);
-    socket.keyGenSession = roomId;
+    if (typeOfEncryption === "bb84")
+        socket.keyGenSession = roomId;
+    else
+        socket.chatSession = roomId;
 
     socket.to(roomId).emit("response", "accepted"); // sender calls finishRequest(accepted)
 };

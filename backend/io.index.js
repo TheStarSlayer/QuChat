@@ -20,7 +20,7 @@ const socketInit = (io) => {
         socket.on("eavesdropRequest", async roomId =>
             await eavesdropRequestEvent(socket, roomId));
 
-        socket.on("accept", async roomId => await acceptEvent(socket, roomId));
+        socket.on("accept", async roomId => await acceptEvent(socket, roomId, typeOfEncryption));
         
         socket.on("updateOnResponseAccept", roomId => updateSocketDataWhenAccepted(socket, roomId));
         socket.on("updateOnResponseAcceptQC", roomId => updateSocketDataWhenAcceptedQC(socket, roomId));
