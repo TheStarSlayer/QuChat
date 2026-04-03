@@ -138,6 +138,7 @@ export const sendMessageEvent = (socket, roomId, message) => {
 
 export const sessionEndEvent = (socket, roomId) => {
     socket.to(roomId).emit("sessionEnd");
+    socket.leave(roomId);
     resetSocketStats(socket);
 }
 
