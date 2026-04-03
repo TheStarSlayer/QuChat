@@ -1,7 +1,8 @@
 function OnlineUsers({ 
     onlineUsers, searchTerm,
     setSearchTerm, setShowNewRequest,
-    setShowRequestsToMe, setShowEavesdroppableRequests 
+    setShowRequestsToMe, setShowEavesdroppableRequests,
+    showChatSession
 }) {
     let subsetOnlineUsers = [...onlineUsers];
 
@@ -33,6 +34,8 @@ function OnlineUsers({
      * 
      * When request button is clicked, call newRequest(receiverUserId) -> 
      *      try to set receiverUserId based on list key
+     * 
+     * When showChatSession is enabled, onlineUsers component should not be interactable
      */
     return (
         <>
