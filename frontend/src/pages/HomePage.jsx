@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import apiCaller from "../lib/api";
 import { toast } from "react-toastify";
 import { io } from "socket.io-client";
+import HomeContext from "../contexts/HomeContext";
 import authCaller from "../lib/auth";
 import Header from "../components/HomeComponents/Header";
 import OnlineUsers from "../components/HomeComponents/OnlineUsers";
 import ChatWindow from "../components/HomeComponents/ChatWindow";
+import WindowLoading from "../components/GeneralComponents/WindowLoading";
 
 function HomePage() {
     const [userId, setUserId] = useState(null);
@@ -19,6 +21,16 @@ function HomePage() {
     const [showNewRequest, setShowNewRequest] = useState(null);
     const [showRequestsToMe, setShowRequestsToMe] = useState(false);
     const [showEavesdroppableRequests, setShowEavesdroppableRequests] = useState(false);
+    const [showChatSession, setShowChatSession] = useState(false);
+
+    const [windowLoading, setWindowLoading] = useState("");
+    const [showTimer, setShowTimer] = useState(-1);
+
+    // Native to newRequest
+    const [timeLimitInSec, setTimeLimitInSec] = useState(30);
+    const [chatSessionTimeInMin, setChatSessionTimeInMin] = useState(5);
+    const [typeOfEncryption, setTypeOfEncryption] = useState("bb84");
+    const [isSimulator, setIsSimulator] = useState(true);
 
     const navigate = useNavigate();
     const socketRef = useRef(null);
@@ -38,31 +50,33 @@ function HomePage() {
     
     // Connect to socket.io
     useEffect(() => {
-        const socket = io({
-            auth: {
-                token: localStorage.getItem("access-token").split(" ")[1]
-            }
-        });
-        
-        socketRef.current = socket;
+        if (userId) {
+            const socket = io({
+                auth: {
+                    token: localStorage.getItem("access-token").split(" ")[1]
+                }
+            });
+            
+            socketRef.current = socket;
 
-        socket.on("connect_error", async () => {
-            try {
-                const response = await authCaller.post("/refresh");
-                localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
-                socket.auth.token = response.data.accessToken;
+            socket.on("connect_error", async () => {
+                try {
+                    const response = await authCaller.post("/refresh");
+                    localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
+                    socket.auth.token = response.data.accessToken;
 
-                socket.connect();
-            }
-            catch (error){
-                console.error(error);
-            }
-        });
+                    socket.connect();
+                }
+                catch (error){
+                    console.error(error);
+                }
+            });
 
-        return () => {
-            socket.disconnect();
-        };
-    }, []);
+            return () => {
+                socket.disconnect();
+            };   
+        }
+    }, [userId]);
     
     // Get online users and register corresponding event listeners
     useEffect(() => {
@@ -77,23 +91,25 @@ function HomePage() {
             }
         };
 
-        getOnlineUsers();
+        if (userId) {
+            getOnlineUsers();
 
-        const socket = socketRef.current;
+            const socket = socketRef.current;
 
-        socket.on("newUser", (newUser) => {
-            setOnlineUsers(onlineUsers => [newUser, ...onlineUsers]);
-        });
+            socket.on("newUser", (newUser) => {
+                setOnlineUsers(onlineUsers => [newUser, ...onlineUsers]);
+            });
 
-        socket.on("userLeft", (userId) => {
-            setOnlineUsers(onlineUsers => onlineUsers.filter((user) => user.username !== userId));
-        });
+            socket.on("userLeft", (userId) => {
+                setOnlineUsers(onlineUsers => onlineUsers.filter((user) => user.username !== userId));
+            });
 
-        return () => {
-            socket.off("newUser");
-            socket.off("userLeft");
-        };
-    }, []);
+            return () => {
+                socket.off("newUser");
+                socket.off("userLeft");
+            };
+        }
+    }, [userId]);
 
     // get my active requests and register corresponding event listeners
     useEffect(() => {
@@ -108,23 +124,25 @@ function HomePage() {
             }
         };
 
-        getRequestsToMe();
+        if (userId) {
+            getRequestsToMe();
 
-        const socket = socketRef.current;
+            const socket = socketRef.current;
 
-        socket.on("requestToJoin", (request) => {
-            setRequestsToMe(requests => [request, ...requests]);
-        });
+            socket.on("requestToJoin", (request) => {
+                setRequestsToMe(requests => [request, ...requests]);
+            });
 
-        socket.on("removeRequest", (userId) => {
-            setRequestsToMe(requests => requests.filter(request => request.sender !== userId));
-        });
+            socket.on("removeRequest", (userId) => {
+                setRequestsToMe(requests => requests.filter(request => request.sender !== userId));
+            });
 
-        return () => {
-            socket.off("requestToJoin");
-            socket.off("removeRequest");
-        };
-    }, []);
+            return () => {
+                socket.off("requestToJoin");
+                socket.off("removeRequest");
+            };
+        }
+    }, [userId]);
 
     // get eavesdroppable requests and register corresponding event listeners
     useEffect(() => {
@@ -139,29 +157,38 @@ function HomePage() {
             }
         };
 
-        getEavesdroppableRequests();
-        
-        const socket = socketRef.current;
+        if (userId) {
+            getEavesdroppableRequests();
+            
+            const socket = socketRef.current;
 
-        socket.on("requestForED", (request) => {
-            if (request.sender !== userId || request.receiver !== userId)
-                setEavesdroppableRequests(requests => [request, ...requests]);
-        });
+            socket.on("requestForED", (request) => {
+                if (request.sender !== userId || request.receiver !== userId)
+                    setEavesdroppableRequests(requests => [request, ...requests]);
+            });
 
-        socket.on("removeRequestForED", (userId) => {
-            setEavesdroppableRequests(requests => requests.filter(request => request.sender !== userId));
-        });
+            socket.on("removeRequestForED", (userId) => {
+                setEavesdroppableRequests(requests => requests.filter(request => request.sender !== userId));
+            });
 
-        socket.on("removeRequest", (userId) => {
-            setEavesdroppableRequests(requests => requests.filter(request => request.sender !== userId));
-        });
+            socket.on("removeRequest", (userId) => {
+                setEavesdroppableRequests(requests => requests.filter(request => request.sender !== userId));
+            });
 
-        return () => {
-            socket.off("requestToJoin");
-            socket.off("removeRequestForED");
-            socket.off("removeRequest");
-        };
+            return () => {
+                socket.off("requestToJoin");
+                socket.off("removeRequestForED");
+                socket.off("removeRequest");
+            };
+        }
     }, [userId]);
+
+    function resetChatWindow() {
+        setShowTimer(-1);
+        setShowNewRequest("");
+        setShowEavesdroppableRequests(false);
+        setShowRequestsToMe(false);
+    }
 
     return (
         <>
@@ -169,15 +196,29 @@ function HomePage() {
 
             <OnlineUsers onlineUsers={onlineUsers} 
                 searchTerm={searchTermForUsers} setSearchTerm={setSearchTermForUsers}
-                setShowNewRequest={setShowNewRequest}
-            />
-
-            <ChatWindow eavesdroppableRequests={eavesdroppableRequests} requestsToMe={requestsToMe}
-                showNewRequest={showNewRequest} setShowNewRequest={setShowNewRequest}
-                showRequestsToMe={showRequestsToMe} setShowRequestsToMe={setShowRequestsToMe}
-                showEavesdroppableRequests={showEavesdroppableRequests}
+                setShowNewRequest={setShowNewRequest} setShowRequestsToMe={setShowRequestsToMe}
                 setShowEavesdroppableRequests={setShowEavesdroppableRequests}
             />
+
+            <HomeContext.Provider value={{
+                userId, socketRef,
+                eavesdroppableRequests, requestsToMe,
+                showNewRequest, setShowNewRequest,
+                showRequestsToMe, setShowRequestsToMe,
+                showEavesdroppableRequests, setShowEavesdroppableRequests,
+                showTimer, setShowTimer,
+                showChatSession, setShowChatSession,
+                setWindowLoading,
+                timeLimitInSec, setTimeLimitInSec,
+                chatSessionTimeInMin, setChatSessionTimeInMin,
+                typeOfEncryption, setTypeOfEncryption,
+                isSimulator, setIsSimulator,
+                resetChatWindow
+            }}>
+                <ChatWindow />
+            </HomeContext.Provider>
+
+            {windowLoading !== "" && <WindowLoading message={windowLoading} />}
         </>
     );
 }
