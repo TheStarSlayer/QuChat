@@ -1,4 +1,8 @@
-function OnlineUsers({ onlineUsers, searchTerm, setSearchTerm, setShowNewRequest }) {
+function OnlineUsers({ 
+    onlineUsers, searchTerm,
+    setSearchTerm, setShowNewRequest,
+    setShowRequestsToMe, setShowEavesdroppableRequests 
+}) {
     let subsetOnlineUsers = [...onlineUsers];
 
     function searcher() {
@@ -12,6 +16,8 @@ function OnlineUsers({ onlineUsers, searchTerm, setSearchTerm, setShowNewRequest
     }
 
     function newRequest(receiverUserId) {
+        setShowRequestsToMe(false);
+        setShowEavesdroppableRequests(false);
         setShowNewRequest(receiverUserId);
     }
 
