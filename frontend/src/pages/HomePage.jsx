@@ -48,6 +48,20 @@ function HomePage() {
     const navigate = useNavigate();
     const socketRef = useRef(null);
 
+    function resetChatWindow() {
+        setShowTimer(-1);
+        setShowNewRequest("");
+        setShowEavesdroppableRequests(false);
+        setShowRequestsToMe(false);
+
+        setShowChatSession(false);
+
+        setChatSessionTimer(-1);
+        setChatEncryption("");
+        setChatRoomId(null);
+        setChatRole("");
+    }
+
     // Verify privilege and set userId
     useEffect(() => {
         apiCaller.get("/verify")
@@ -84,6 +98,14 @@ function HomePage() {
                     console.error(error);
                 }
             });
+
+            const chatReqFailed = (message) => {
+                toast.error(message);
+                resetChatWindow();
+            };
+
+            socket.on("requestFailed", chatReqFailed);
+            socket.on("keyGenFailed", chatReqFailed);
 
             return () => {
                 socket.disconnect();
@@ -195,14 +217,6 @@ function HomePage() {
             };
         }
     }, [userId]);
-
-    function resetChatWindow() {
-        setShowTimer(-1);
-        setShowNewRequest("");
-        setShowEavesdroppableRequests(false);
-        setShowRequestsToMe(false);
-        setShowChatSession(false);
-    }
 
     function initChatSession(roomId, typeOfEncryption, timer, role) {
         setChatRoomId(roomId);
