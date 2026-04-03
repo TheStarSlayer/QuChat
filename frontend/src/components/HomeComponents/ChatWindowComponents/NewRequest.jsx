@@ -29,6 +29,7 @@ function NewRequest() {
      * 
      * On click of submit, call createRequest()
      * 
+     * NewRequest also contains a close button, which will call resetChatWindow()
      */
 
     const {
@@ -54,7 +55,6 @@ function NewRequest() {
      */
     async function createRequest() {
         setWindowLoading("Sending request...");
-        const socket = socketRef.current;
 
         try {
             const response = await apiCaller.post("/persistRequest", {
@@ -66,6 +66,7 @@ function NewRequest() {
             });
             
             const request = response.data.newRequestPublic;
+            const socket = socketRef.current;
 
             socket.emit("sendJoinRequest", showNewRequest, request);
             setShowTimer(timeLimitInSec);
@@ -85,7 +86,7 @@ function NewRequest() {
                 }
             }, timeLimitInSec);
 
-            socket.on("response", async (response) => {
+            socket.once("response", async (response) => {
                 clearTimeout(timeoutId);
                 setShowTimer(-1);
                 setWindowLoading("Handling response...");
@@ -104,7 +105,7 @@ function NewRequest() {
                         socket.emit("joinAck", userId, true);
 
                         resetChatWindow();
-                        initChatSession(userId, typeOfEncryption, chatSessionTimeInMin);
+                        initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host");
                         setShowChatSession(true);
                     }
                     else {
