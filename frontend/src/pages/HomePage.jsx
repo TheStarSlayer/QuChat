@@ -224,7 +224,7 @@ function HomePage() {
 
             <HomeContext.Provider value={{
                 userId, socketRef,
-                eavesdroppableRequests, requestsToMe,
+                eavesdroppableRequests, requestsToMe, setRequestsToMe,
                 showNewRequest, setShowNewRequest,
                 showRequestsToMe, setShowRequestsToMe,
                 showEavesdroppableRequests, setShowEavesdroppableRequests,
