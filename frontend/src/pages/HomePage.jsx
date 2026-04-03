@@ -16,8 +16,6 @@ function HomePage() {
     const [eavesdroppableRequests, setEavesdroppableRequests] = useState([]);
     const [requestsToMe, setRequestsToMe] = useState([]);
 
-    const [searchTermForUsers, setSearchTermForUsers] = useState("");
-
     const [showNewRequest, setShowNewRequest] = useState(null);
     const [showRequestsToMe, setShowRequestsToMe] = useState(false);
     const [showEavesdroppableRequests, setShowEavesdroppableRequests] = useState(false);
@@ -26,13 +24,22 @@ function HomePage() {
     const [windowLoading, setWindowLoading] = useState("");
     const [showTimer, setShowTimer] = useState(-1);
 
-    // Native to newRequest
+    // Native to OnlineUsers
+    const [searchTermForUsers, setSearchTermForUsers] = useState("");
+
+    // Native to NewRequest
     const [timeLimitInSec, setTimeLimitInSec] = useState(30);
     const [chatSessionTimeInMin, setChatSessionTimeInMin] = useState(5);
     const [typeOfEncryption, setTypeOfEncryption] = useState("bb84");
     const [isSimulator, setIsSimulator] = useState(true);
 
-    // Native to chatSession
+    // Native to RequestsToMe
+    const [searchTermForRTM, setSearchTermForRTM] = useState("");
+
+    // Native to EavesdroppableRequests
+    const [searchTermForEDR, setSearchTermForEDR] = useState("");
+
+    // Native to ChatSession
     const [chatSessionTimer, setChatSessionTimer] = useState(-1);
     const [chatEncryption, setChatEncryption] = useState("");
     const [chatRoomId, setChatRoomId] = useState(null);
@@ -194,6 +201,7 @@ function HomePage() {
         setShowNewRequest("");
         setShowEavesdroppableRequests(false);
         setShowRequestsToMe(false);
+        setShowChatSession(false);
     }
 
     function initChatSession(roomId, typeOfEncryption, timer, role) {
@@ -231,7 +239,9 @@ function HomePage() {
                 chatSessionTimer, setChatSessionTimer,
                 chatEncryption, setChatEncryption,
                 chatRole, setChatRole,
-                resetChatWindow, initChatSession
+                resetChatWindow, initChatSession,
+                searchTermForRTM, setSearchTermForRTM,
+                searchTermForEDR, setSearchTermForEDR
             }}>
                 <ChatWindow />
             </HomeContext.Provider>
