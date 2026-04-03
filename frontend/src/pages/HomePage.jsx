@@ -36,6 +36,7 @@ function HomePage() {
     const [chatSessionTimer, setChatSessionTimer] = useState(-1);
     const [chatEncryption, setChatEncryption] = useState("");
     const [chatRoomId, setChatRoomId] = useState(null);
+    const [chatRole, setChatRole] = useState("");
 
     const navigate = useNavigate();
     const socketRef = useRef(null);
@@ -195,10 +196,11 @@ function HomePage() {
         setShowRequestsToMe(false);
     }
 
-    function initChatSession(roomId, typeOfEncryption, timer) {
+    function initChatSession(roomId, typeOfEncryption, timer, role) {
         setChatRoomId(roomId);
         setChatEncryption(typeOfEncryption);
         setChatSessionTimer(timer);
+        setChatRole(role);
     }
 
     return (
@@ -227,6 +229,7 @@ function HomePage() {
                 chatRoomId, setChatRoomId,
                 chatSessionTimer, setChatSessionTimer,
                 chatEncryption, setChatEncryption,
+                chatRole, setChatRole,
                 resetChatWindow, initChatSession
             }}>
                 <ChatWindow />
