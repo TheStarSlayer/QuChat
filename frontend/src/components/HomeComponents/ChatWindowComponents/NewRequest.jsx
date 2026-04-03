@@ -84,7 +84,7 @@ function NewRequest() {
                     toast.error("Could not close request successfully!");
                     console.error(error);
                 }
-            }, timeLimitInSec);
+            }, request.timeLimitInMs);
 
             socket.once("response", async (response) => {
                 clearTimeout(timeoutId);
