@@ -1,6 +1,9 @@
-function Timer({ time }) {
+function Timer() {
     /**
-     * Must show timer
+     * Used by NewRequest to display a running timer within which the request
+     * won't timeout.
+     * 
+     * A simple modal with timer and message with no other actions than waiting
      */
 }
 
