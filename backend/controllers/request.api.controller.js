@@ -39,7 +39,7 @@ export const persistRequestController = async (req, res) => {
         sender: senderId,
         receiver: receiverId,
         createdOn: Date.now(),
-        timeLimitInMs: timeLimitInMs + 1000, // Consider latency
+        timeLimitInMs: timeLimitInMs - 500, // Consider latency
         typeOfEncryption,
         chatSessionTimeInMin,
         isSimulator
