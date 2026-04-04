@@ -158,7 +158,8 @@ function HomePage() {
             });
 
             socket.on("message", (message, sender, senderProfilePic) => {
-                setChatMessages([...chatMessages, { message, sender, senderProfilePic }]);
+                setChatMessages((chatMessages) => 
+                    [...chatMessages, { message, sender, senderProfilePic }]);
             });
 
             const chatReqFailed = (message) => {
