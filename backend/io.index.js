@@ -5,7 +5,8 @@ import {
     acceptEvent, rejectEvent, joinAckEvent,
     sendMessageEvent, leaveEvent, sessionEndEvent, resetSocketStats,
     updateSocketDataWhenQBERAccepted,
-    updateSocketDataWhenAccepted, updateSocketDataWhenAcceptedQC
+    updateSocketDataWhenAccepted, updateSocketDataWhenAcceptedQC,
+    sessionDisturbedEvent
 } from "./lib/socketEventLib.js";
 
 const socketInit = (io) => {
@@ -20,7 +21,7 @@ const socketInit = (io) => {
         socket.on("eavesdropRequest", async roomId =>
             await eavesdropRequestEvent(socket, roomId));
 
-        socket.on("accept", async roomId => await acceptEvent(socket, roomId, typeOfEncryption));
+        socket.on("accept", async (roomId, typeOfEncryption) => await acceptEvent(socket, roomId, typeOfEncryption));
         
         socket.on("updateOnResponseAccept", roomId => updateSocketDataWhenAccepted(socket, roomId));
         socket.on("updateOnResponseAcceptQC", roomId => updateSocketDataWhenAcceptedQC(socket, roomId));
@@ -35,16 +36,17 @@ const socketInit = (io) => {
         socket.on("calculateQBER", (roomId, subset) =>
             calculateQBEREvent(socket, roomId, subset));
 
-        socket.on("shareQBERResult", (roomId, qberSatisfied) =>
-            shareQBERResultEvent(socket, roomId, qberSatisfied));
+        socket.on("shareQBERResult", (roomId, qber) =>
+            shareQBERResultEvent(socket, roomId, qber));
 
         socket.on("updateOnQBERAccept", roomId => updateSocketDataWhenQBERAccepted(socket, roomId));
 
-        socket.on("sendMessage", (roomId, encryptedMessage) =>
-            sendMessageEvent(socket, roomId, encryptedMessage));
+        socket.on("sendMessage", (roomId, message) =>
+            sendMessageEvent(socket, roomId, message));
 
         socket.on("leave", async roomId => await leaveEvent(socket, roomId));
         socket.on("resetSocketStats", () => resetSocketStats(socket));
+        socket.on("sessionDisturbed", (roomId, message) => sessionDisturbedEvent(socket, roomId, message));
         socket.on("sessionEnd", roomId => sessionEndEvent(socket, roomId));
         socket.on("disconnect", async () => await socketDisconnectEvent(socket));
     });
