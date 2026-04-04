@@ -42,7 +42,8 @@ function NewRequest() {
         showTimer, setShowTimer,
         setShowChatSession,
         userId, resetChatWindow,
-        initChatSession
+        initChatSession,
+        setQkeyBits, setQkeyBases
     } = useContext(HomeContext);
 
     /**
@@ -96,7 +97,9 @@ function NewRequest() {
                         
                         if (typeOfEncryption === "bb84") {
                             socket.emit("updateOnResponseAcceptQC", userId);
-                            await qcCaller.get(`/distributeRawKey/${userId}`);
+                            const response = await qcCaller.get(`/distributeRawKey/${userId}`);
+                            setQkeyBases(response.data.bases);
+                            setQkeyBits(response.data.bits);
                         }
                         else {
                             socket.emit("updateOnResponseAccepted", userId);
