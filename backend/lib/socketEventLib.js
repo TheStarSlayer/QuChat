@@ -25,7 +25,7 @@ export const socketConnectEvent = async (socket) => {
 
         socket.join(socket.userId);
 
-        const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase()
+        const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase();
         socket.broadcast.emit("newUser", {
             username: socket.userId,
             profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png` 
@@ -139,9 +139,12 @@ export const updateSocketDataWhenQBERAccepted = (socket, roomId) => {
 }
 
 export const sendMessageEvent = (socket, roomId, message) => {
+    const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase();
+
     socket.to(roomId).emit("message", {
         message: message,
-        sender: socket.userId
+        sender: socket.userId,
+        profilePic: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png`
     });
 };
 
