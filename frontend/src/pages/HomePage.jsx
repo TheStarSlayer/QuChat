@@ -13,6 +13,7 @@ import ConfirmDialogBox from "../components/GeneralComponents/ConfirmDialogBox";
 
 function HomePage() {
     const [userId, setUserId] = useState(null);
+    const [profilePic, setProfilePic] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [eavesdroppableRequests, setEavesdroppableRequests] = useState([]);
     const [requestsToMe, setRequestsToMe] = useState([]);
@@ -20,7 +21,7 @@ function HomePage() {
         onlineUsers,
         eavesdroppableRequests,
         requestsToMe, setRequestsToMe,
-        userId
+        userId, profilePic
     };
 
     const [showNewRequest, setShowNewRequest] = useState(null);
@@ -73,11 +74,15 @@ function HomePage() {
     const [chatEncryption, setChatEncryption] = useState("");
     const [chatRoomId, setChatRoomId] = useState(null);
     const [chatRole, setChatRole] = useState("");
+    const [chatMessages, setChatMessages] = useState([]);
+    const [message, setMessage] = useState([]);
     const chatSessionStates = {
         chatSessionTimer, setChatSessionTimer,
         chatEncryption, setChatEncryption, 
         chatRoomId, setChatRoomId,
-        chatRole, setChatRole
+        chatRole, setChatRole,
+        message, setMessage,
+        chatMessages, setChatMessages
     };
 
     const navigate = useNavigate();
@@ -116,8 +121,11 @@ function HomePage() {
     useEffect(() => {
         apiCaller.get("/verify")
         .then((response) => {
-            setUserId(response.data.userId);
-            toast.success(`Welcome ${response.data.userId}`);
+            const resUserId = response.data.userId;
+            const profilePicAvtr = resUserId[0].toLowerCase() + resUserId[1].toLowerCase();
+            setUserId(resUserId);
+            setProfilePic(`https://cdn.auth0.com/avatars/${profilePicAvtr}.png`);
+            toast.success(`Welcome ${resUserId}`);
         })
         .catch(() => {
             navigate("/onboard");
@@ -147,6 +155,10 @@ function HomePage() {
                 catch (error){
                     console.error(error);
                 }
+            });
+
+            socket.on("message", (message, sender, senderProfilePic) => {
+                setChatMessages([...chatMessages, { message, sender, senderProfilePic }]);
             });
 
             const chatReqFailed = (message) => {
