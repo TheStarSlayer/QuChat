@@ -1,17 +1,23 @@
-function OnlineUsers({ 
-    onlineUsers, searchTerm,
-    setSearchTerm, setShowNewRequest,
-    setShowRequestsToMe, setShowEavesdroppableRequests,
-    showChatSession
-}) {
+import { useContext } from "react";
+import HomeContext from "../../contexts/HomeContext";
+
+function OnlineUsers() {
+
+    const { 
+        onlineUsers, searchTermForUsers,
+        setSearchTermForUsers, setShowNewRequest,
+        setShowRequestsToMe, setShowEavesdroppableRequests,
+        showChatSession
+    } = useContext(HomeContext)
+
     let subsetOnlineUsers = [...onlineUsers];
 
     function searcher() {
-        if (searchTerm === "") {
+        if (searchTermForUsers === "") {
             subsetOnlineUsers = [...onlineUsers];
         }
         else {
-            const regex = new RegExp(searchTerm, "i");
+            const regex = new RegExp(searchTermForUsers, "i");
             subsetOnlineUsers = onlineUsers.filter((user) => regex.test(user.username));
         }
     }
@@ -28,7 +34,7 @@ function OnlineUsers({
      * Contains a search bar (for searching through onlineUsers)
      * 
      * When searchbar is empty, show all users (initially, all are shown)
-     * When value of searchbar changes (use searchTerm state), call setSearchTerm and searcher() function
+     * When value of searchbar changes (use searchTermForUsers state), call setsearchTermForUsers and searcher() function
      * 
      * Build the list from subsetOnlineUsers only
      * 
