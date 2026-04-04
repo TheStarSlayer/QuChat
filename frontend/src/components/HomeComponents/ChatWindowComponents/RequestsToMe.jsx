@@ -34,20 +34,20 @@ function RequestsToMe() {
 
     async function respondToRequest(request, response) {
         const socket = socketRef.current;
-
-        setRequestsToMe(requests =>
-            requests.filter(requestToMe => requestToMe.sender !== request.sender));
         
-        if (!response) {
-            socket.emit("reject", request.sender);
-            return;
+        if (response && (request.createdAt + request.timeLimitInMs > Date.now()) ) {
+            socket.emit("accept", request.sender, request.typeOfEncryption);
+        
+            resetChatWindow();
+            initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver");
+            setShowChatSession();
         }
-
-        socket.emit("accept", request.sender, request.typeOfEncryption);
+        else {
+            socket.emit("reject", request.sender);
+            setRequestsToMe(requests =>
+                requests.filter(requestToMe => requestToMe.sender !== request.sender));
+        }
         
-        resetChatWindow();
-        initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver");
-        setShowChatSession();
     }
 
     return (
