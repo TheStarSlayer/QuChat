@@ -10,8 +10,11 @@ import OnlineUsers from "../components/HomeComponents/OnlineUsers";
 import ChatWindow from "../components/HomeComponents/ChatWindow";
 import WindowLoading from "../components/GeneralComponents/WindowLoading";
 import ConfirmDialogBox from "../components/GeneralComponents/ConfirmDialogBox";
+import ExitPageWarning from "../components/GeneralComponents/ExitPageWarning";
 
 function HomePage() {
+    const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
+
     const [userId, setUserId] = useState(null);
     const [profilePic, setProfilePic] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState([]);
@@ -74,15 +77,17 @@ function HomePage() {
     const [chatEncryption, setChatEncryption] = useState("");
     const [chatRoomId, setChatRoomId] = useState(null);
     const [chatRole, setChatRole] = useState("");
-    const [chatMessages, setChatMessages] = useState([]);
-    const [message, setMessage] = useState([]);
+    const [statusWindow, setStatusWindow] = useState("Starting up session...");
+    const [qkeyBases, setQkeyBases] = useState("");
+    const [qkeyBits, setQkeyBits] = useState("");
     const chatSessionStates = {
         chatSessionTimer, setChatSessionTimer,
         chatEncryption, setChatEncryption, 
         chatRoomId, setChatRoomId,
         chatRole, setChatRole,
-        message, setMessage,
-        chatMessages, setChatMessages
+        statusWindow, setStatusWindow,
+        qkeyBases, setQkeyBases,
+        qkeyBits, setQkeyBits
     };
 
     const navigate = useNavigate();
@@ -144,22 +149,22 @@ function HomePage() {
             
             socketRef.current = socket;
 
-            socket.on("connect_error", async () => {
-                try {
-                    const response = await authCaller.post("/refresh");
-                    localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
-                    socket.auth.token = response.data.accessToken;
-
-                    socket.connect();
+            socket.on("connect_error", async (error) => {
+                if (error.message === "User already exists!") {
+                    setAlreadyLoggedIn(true);
                 }
-                catch (error){
-                    console.error(error);
-                }
-            });
+                else {
+                    try {
+                        const response = await authCaller.post("/refresh");
+                        localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
+                        socket.auth.token = response.data.accessToken;
 
-            socket.on("message", (message, sender, senderProfilePic) => {
-                setChatMessages((chatMessages) => 
-                    [...chatMessages, { message, sender, senderProfilePic }]);
+                        socket.connect();
+                    }
+                    catch (error){
+                        console.error(error);
+                    }
+                }
             });
 
             const chatReqFailed = (message) => {
@@ -189,7 +194,7 @@ function HomePage() {
             }
         };
 
-        if (userId) {
+        if (userId && !alreadyLoggedIn) {
             getOnlineUsers();
 
             const socket = socketRef.current;
@@ -207,7 +212,7 @@ function HomePage() {
                 socket.off("userLeft");
             };
         }
-    }, [userId]);
+    }, [userId, alreadyLoggedIn]);
 
     // get my active requests and register corresponding event listeners
     useEffect(() => {
@@ -222,7 +227,7 @@ function HomePage() {
             }
         };
 
-        if (userId) {
+        if (userId && !alreadyLoggedIn) {
             getRequestsToMe();
 
             const socket = socketRef.current;
@@ -240,7 +245,7 @@ function HomePage() {
                 socket.off("removeRequest");
             };
         }
-    }, [userId]);
+    }, [alreadyLoggedIn, userId]);
 
     // get eavesdroppable requests and register corresponding event listeners
     useEffect(() => {
@@ -255,7 +260,7 @@ function HomePage() {
             }
         };
 
-        if (userId) {
+        if (userId && !alreadyLoggedIn) {
             getEavesdroppableRequests();
             
             const socket = socketRef.current;
@@ -279,7 +284,7 @@ function HomePage() {
                 socket.off("removeRequest");
             };
         }
-    }, [userId]);
+    }, [alreadyLoggedIn, userId]);
 
     // Prevent right-click
     document.addEventListener("contextmenu", (event) => {
@@ -344,6 +349,7 @@ function HomePage() {
 
             {windowLoading !== "" && <WindowLoading message={windowLoading} />}
             {showConfirmDialogBox !== "" && <ConfirmDialogBox message={showConfirmDialogBox} />}
+            {alreadyLoggedIn && <ExitPageWarning />}
         </>
     );
 }
