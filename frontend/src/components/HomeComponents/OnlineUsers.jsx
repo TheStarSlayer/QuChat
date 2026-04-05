@@ -1,24 +1,24 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import HomeContext from "../../contexts/HomeContext";
 
 function OnlineUsers() {
 
     const { 
-        onlineUsers, searchTermForUsers,
-        setSearchTermForUsers, setShowNewRequest,
+        onlineUsers, setShowNewRequest,
         setShowRequestsToMe, setShowEavesdroppableRequests,
         showChatSession
     } = useContext(HomeContext)
 
-    let subsetOnlineUsers = [...onlineUsers];
+    const [searchTermForUsers, setSearchTermForUsers] = useState("");
+    const [subsetOnlineUsers, setSubsetOnlineUsers] = useState([...onlineUsers]);
 
     function searcher() {
         if (searchTermForUsers === "") {
-            subsetOnlineUsers = [...onlineUsers];
+            setSubsetOnlineUsers([...onlineUsers]);
         }
         else {
             const regex = new RegExp(searchTermForUsers, "i");
-            subsetOnlineUsers = onlineUsers.filter((user) => regex.test(user.username));
+            setSubsetOnlineUsers(onlineUsers.filter((user) => regex.test(user.username)));
         }
     }
 

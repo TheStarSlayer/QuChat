@@ -15,10 +15,13 @@ from qiskit import QuantumCircuit
 
 import os
 from dotenv import load_dotenv
+import math
 
 import pymongo
 
 app = FastAPI()
+
+powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
 origins = [
     "http://localhost:8596", # server
@@ -102,6 +105,61 @@ async def random_num_generator(
     counts = result[0].data.meas.get_counts()
     
     return list(counts.keys())
+
+@app.get("/getRandomIndices/{typeOfMachine}")
+async def random_indices_generator(
+    typeOfMachine: Literal["sim", "hw"],
+    keyLength: int = 78
+) -> list[int | None]:
+    
+    if keyLength >= 512:
+        return JSONResponse(
+            status_code=400,
+            content={ "message": "Does not support key length greater than 511" }
+        )
+
+    min_length = math.floor(0.1 * keyLength)
+    def_length = math.floor(0.15 * keyLength)
+    index_range = findNoOfBits(keyLength)
+    
+    observed_indices = await random_indices_gen_helper(keyLength, typeOfMachine, def_length, index_range)
+        
+    while len(observed_indices) < min_length:
+        new_indices = await random_indices_gen_helper(keyLength, typeOfMachine, min_length, index_range)
+        observed_indices.update(new_indices)
+    
+    observed_indices_list = list(observed_indices)
+    observed_indices_list.sort()
+    
+    return JSONResponse(
+        status_code=200,
+        content={ "randIndices": observed_indices_list }
+    )
+
+async def random_indices_gen_helper(
+    keyLength: int,
+    typeOfMachine: Literal["sim", "hw"],
+    def_length: int,
+    index_range: int
+):    
+    observed_indices = set()
+    indices_bitstring = await random_num_generator(typeOfMachine, str(index_range), str(def_length))
+    
+    for bitstring in indices_bitstring:
+        index = 0
+        for i in range(0, index_range):
+            if (bitstring[i] == "1"):
+                index += powers_of_two[index_range-1-i]
+        if index < keyLength:
+            observed_indices.add(index)
+
+    return observed_indices
+
+def findNoOfBits(keyLength):
+    for i in range(len(powers_of_two)):
+        if powers_of_two[i] <= keyLength:
+            return 9 - i
+    return 0
 
 @app.get("/distributeRawKey/{roomId}")
 async def distribute_raw_key(

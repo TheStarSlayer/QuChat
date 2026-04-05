@@ -13,7 +13,7 @@ const finishRequest = async (userId, finishStatus) => {
 
         const request = await RequestModel.findOneAndUpdate(findFilter, updateFilter);
         if (request === null)
-            return res.status(404).json({ msg: "Request from this user does not exist" });
+            return false;
 
         const requestee = await redisClient.hGet(`requester:${userId}`, receiver);
         await redisClient.multi()

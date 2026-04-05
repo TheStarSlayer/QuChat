@@ -15,12 +15,12 @@ function EavesdroppableRequests() {
      */
 
     const {
-        searchTermForEDR, setSearchTermForEDR,
         eavesdroppableRequests, resetChatWindow,
         setWindowLoading, socketRef,
         userId, initChatSession, setShowChatSession
     } = useContext(HomeContext);
 
+    const [searchTermForEDR, setSearchTermForEDR] = useState("");
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
 
     function searcher() {
@@ -55,7 +55,7 @@ function EavesdroppableRequests() {
                     socket.emit("updateOnResponseAccept", userId);
 
                 resetChatWindow();
-                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper");
+                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
                 setShowChatSession(true);
             });
         }

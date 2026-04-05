@@ -13,7 +13,6 @@ import ConfirmDialogBox from "../components/GeneralComponents/ConfirmDialogBox";
 import ExitPageWarning from "../components/GeneralComponents/ExitPageWarning";
 
 function HomePage() {
-    const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
 
     const [userId, setUserId] = useState(null);
     const [profilePic, setProfilePic] = useState(null);
@@ -21,10 +20,10 @@ function HomePage() {
     const [eavesdroppableRequests, setEavesdroppableRequests] = useState([]);
     const [requestsToMe, setRequestsToMe] = useState([]);
     const mainStates = {
+        userId, profilePic,
         onlineUsers,
         eavesdroppableRequests,
         requestsToMe, setRequestsToMe,
-        userId, profilePic
     };
 
     const [showNewRequest, setShowNewRequest] = useState(null);
@@ -39,87 +38,60 @@ function HomePage() {
     };
 
     // Native to General Components
+    const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
     const [windowLoading, setWindowLoading] = useState("");
     const [showTimer, setShowTimer] = useState(-1);
     const [showConfirmDialogBox, setShowConfirmDialogBox] = useState("");
     const generalComponentStates = {
-        setWindowLoading,
-        showTimer, setShowTimer,
-        showConfirmDialogBox, setShowConfirmDialogBox
+        setWindowLoading, setShowTimer, setShowConfirmDialogBox
     };
-
-    // Native to OnlineUsers
-    const [searchTermForUsers, setSearchTermForUsers] = useState("");
-    const onlineUserStates = { searchTermForUsers, setSearchTermForUsers };
-
-    // Native to NewRequest
-    const [timeLimitInSec, setTimeLimitInSec] = useState(30);
-    const [chatSessionTimeInMin, setChatSessionTimeInMin] = useState(5);
-    const [typeOfEncryption, setTypeOfEncryption] = useState("bb84");
-    const [isSimulator, setIsSimulator] = useState(true);
-    const newRequestStates = {
-        timeLimitInSec, setTimeLimitInSec,
-        chatSessionTimeInMin, setChatSessionTimeInMin,
-        typeOfEncryption, setTypeOfEncryption,
-        isSimulator, setIsSimulator
-    };
-
-    // Native to RequestsToMe
-    const [searchTermForRTM, setSearchTermForRTM] = useState("");
-    const requestsToMeStates = { searchTermForRTM, setSearchTermForRTM };
-
-    // Native to EavesdroppableRequests
-    const [searchTermForEDR, setSearchTermForEDR] = useState("");
-    const EDRequestsStates = { searchTermForEDR, setSearchTermForEDR };
 
     // Native to ChatSession
     const [chatSessionTimer, setChatSessionTimer] = useState(-1);
     const [chatEncryption, setChatEncryption] = useState("");
+    const [chatUsesSimulator, setChatUsesSimulator] = useState(null);
     const [chatRoomId, setChatRoomId] = useState(null);
     const [chatRole, setChatRole] = useState("");
+
     const [statusWindow, setStatusWindow] = useState("Starting up session...");
-    const [qkeyBases, setQkeyBases] = useState("");
-    const [qkeyBits, setQkeyBits] = useState("");
+
+    const qkeyBases = useRef("");
+    const qkeyBits = useRef("");
+
     const chatSessionStates = {
         chatSessionTimer, setChatSessionTimer,
         chatEncryption, setChatEncryption, 
         chatRoomId, setChatRoomId,
         chatRole, setChatRole,
         statusWindow, setStatusWindow,
-        qkeyBases, setQkeyBases,
-        qkeyBits, setQkeyBits
+        chatUsesSimulator, setChatUsesSimulator,
+        qkeyBases, qkeyBits
     };
 
     const navigate = useNavigate();
     const socketRef = useRef(null);
 
     function resetChatWindow() {
-        setShowTimer(-1);
-
         setShowNewRequest("");
-        setTimeLimitInSec(30);
-        setChatSessionTimeInMin(5);
-        setTypeOfEncryption("bb84");
-        setIsSimulator(true);
-
         setShowEavesdroppableRequests(false);
-        setSearchTermForEDR("");
-
         setShowRequestsToMe(false);
-        setSearchTermForRTM("");
-
         setShowChatSession(false);
+
         setChatSessionTimer(-1);
         setChatEncryption("");
+        setChatUsesSimulator(null);
         setChatRoomId(null);
         setChatRole("");
+        qkeyBases.current = "";
+        qkeyBits.current = "";
     }
 
-    function initChatSession(roomId, typeOfEncryption, timer, role) {
+    function initChatSession(roomId, typeOfEncryption, timer, role, usesSimulator) {
         setChatRoomId(roomId);
         setChatEncryption(typeOfEncryption);
         setChatSessionTimer(timer);
         setChatRole(role);
+        setChatUsesSimulator(usesSimulator);
     }
     
     // Verify privilege and set userId
@@ -167,13 +139,11 @@ function HomePage() {
                 }
             });
 
-            const chatReqFailed = (message) => {
+            socket.on("requestFailed", (message) => {
+                setShowTimer(-1);
                 toast.error(message);
                 resetChatWindow();
-            };
-
-            socket.on("requestFailed", chatReqFailed);
-            socket.on("keyGenFailed", chatReqFailed);
+            });
 
             return () => {
                 socket.disconnect();
@@ -332,10 +302,6 @@ function HomePage() {
                 ...mainStates,
                 ...currentChatWindowComponentSetter,
                 ...generalComponentStates,
-                ...onlineUserStates,
-                ...newRequestStates,
-                ...requestsToMeStates,
-                ...EDRequestsStates,
                 ...chatSessionStates,
                 resetChatWindow, initChatSession,
                 socketRef
@@ -347,9 +313,11 @@ function HomePage() {
 
             </HomeContext.Provider>
 
+            {alreadyLoggedIn && <ExitPageWarning />}
+
+            {showTimer !== -1 && <Timer time={showTimer}/>}
             {windowLoading !== "" && <WindowLoading message={windowLoading} />}
             {showConfirmDialogBox !== "" && <ConfirmDialogBox message={showConfirmDialogBox} />}
-            {alreadyLoggedIn && <ExitPageWarning />}
         </>
     );
 }

@@ -100,7 +100,7 @@ export const rejectEvent = async (socket, roomId) => {
 export const joinAckEvent = async (socket, roomId, ack) => {
     const isReceiverOnline = await checkIfOnline(roomId);
     if (!isReceiverOnline)
-        return socket.emit("requestFailed", "User is not available for requests"); // call finishRequest(cancelled)
+        return socket.emit("keyGenFailed", "User is not available for requests"); // call finishRequest(cancelled)
  
     socket.to(roomId).emit("ackFromHost", ack);
 
