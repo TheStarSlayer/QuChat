@@ -108,7 +108,7 @@ function NewRequest() {
                         socket.emit("joinAck", userId, true);
 
                         resetChatWindow();
-                        initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host");
+                        initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host", request.isSimulator);
                         setShowChatSession(true);
                     }
                     else {

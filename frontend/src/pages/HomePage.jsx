@@ -75,6 +75,7 @@ function HomePage() {
     // Native to ChatSession
     const [chatSessionTimer, setChatSessionTimer] = useState(-1);
     const [chatEncryption, setChatEncryption] = useState("");
+    const [chatUsesSimulator, setChatUsesSimulator] = useState(null);
     const [chatRoomId, setChatRoomId] = useState(null);
     const [chatRole, setChatRole] = useState("");
     const [statusWindow, setStatusWindow] = useState("Starting up session...");
@@ -87,7 +88,8 @@ function HomePage() {
         chatRole, setChatRole,
         statusWindow, setStatusWindow,
         qkeyBases, setQkeyBases,
-        qkeyBits, setQkeyBits
+        qkeyBits, setQkeyBits,
+        chatUsesSimulator
     };
 
     const navigate = useNavigate();
@@ -115,11 +117,12 @@ function HomePage() {
         setChatRole("");
     }
 
-    function initChatSession(roomId, typeOfEncryption, timer, role) {
+    function initChatSession(roomId, typeOfEncryption, timer, role, usesSimulator) {
         setChatRoomId(roomId);
         setChatEncryption(typeOfEncryption);
         setChatSessionTimer(timer);
         setChatRole(role);
+        setChatUsesSimulator(usesSimulator);
     }
     
     // Verify privilege and set userId

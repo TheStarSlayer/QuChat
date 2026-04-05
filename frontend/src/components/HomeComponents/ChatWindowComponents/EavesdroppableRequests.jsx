@@ -55,7 +55,7 @@ function EavesdroppableRequests() {
                     socket.emit("updateOnResponseAccept", userId);
 
                 resetChatWindow();
-                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper");
+                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
                 setShowChatSession(true);
             });
         }

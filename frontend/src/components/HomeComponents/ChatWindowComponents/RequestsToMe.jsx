@@ -39,7 +39,7 @@ function RequestsToMe() {
             socket.emit("accept", request.sender, request.typeOfEncryption);
         
             resetChatWindow();
-            initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver");
+            initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver", request.isSimulator);
             setShowChatSession();
         }
         else {
