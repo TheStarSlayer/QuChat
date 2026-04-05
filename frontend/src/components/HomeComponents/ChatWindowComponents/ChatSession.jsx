@@ -19,7 +19,8 @@ function ChatSession() {
         resetChatWindow,
         statusWindow, setStatusWindow,
         qkeyBases, setQkeyBases,
-        qkeyBits, setQkeyBits
+        qkeyBits, setQkeyBits,
+        chatUsesSimulator
     } = useContext(HomeContext);
 
     const [freeToChat, setFreeToChat] = useState(false);
@@ -122,7 +123,9 @@ function ChatSession() {
                     siftKey(bases);
                     
                     try {
-                        const response = await qcCaller.get(`/getRandomIndices/${siftedQkeyBits.length}`);
+                        const response = await qcCaller.get(
+                        `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}?keyLength=${siftedQkeyBits.length}`
+                        );
                         
                         const randIndices = response.data.randIndices;
                         const randBits = getRandBits(randIndices);
