@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
 
@@ -21,15 +21,15 @@ function EavesdroppableRequests() {
         userId, initChatSession, setShowChatSession
     } = useContext(HomeContext);
 
-    let subsetEDRequests = [...eavesdroppableRequests];
+    const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
 
     function searcher() {
         if (searchTermForEDR === "") {
-            subsetEDRequests = [...eavesdroppableRequests];
+            setSubsetEDRequests([...eavesdroppableRequests]);
         }
         else {
             const regex = new RegExp(searchTermForEDR, "i");
-            subsetEDRequests = eavesdroppableRequests.filter((request) => regex.test(request.sender));
+            setSubsetEDRequests(eavesdroppableRequests.filter((request) => regex.test(request.sender)));
         }
     }
 

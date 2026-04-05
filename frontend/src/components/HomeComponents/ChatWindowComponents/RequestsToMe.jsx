@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 
 function RequestsToMe() {
     /**
@@ -20,34 +20,38 @@ function RequestsToMe() {
         setRequestsToMe
     } = useContext(HomeContext);
 
-    let subsetRequestsToMe = [...requestsToMe];
+    const [subsetRequestsToMe, setSubsetRequestsToMe] = useState([...requestsToMe]);
 
     function searcher() {
         if (searchTermForRTM === "") {
-            subsetRequestsToMe = [...requestsToMe];
+            setSubsetRequestsToMe([...requestsToMe]);
         }
         else {
             const regex = new RegExp(searchTermForRTM, "i");
-            subsetRequestsToMe = requestsToMe.filter((request) => regex.test(request.sender));
+            setSubsetRequestsToMe(requestsToMe.filter((request) => regex.test(request.sender)));
         }
     }
 
     async function respondToRequest(request, response) {
         const socket = socketRef.current;
-
-        setRequestsToMe(requests =>
-            requests.filter(requestToMe => requestToMe.sender !== request.sender));
         
-        if (!response) {
-            socket.emit("reject", request.sender);
-            return;
+        if (response && (request.createdAt + request.timeLimitInMs > Date.now()) ) {
+            socket.emit("accept", request.sender, request.typeOfEncryption);
+        
+            resetChatWindow();
+            initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver");
+            setShowChatSession();
         }
-
-        socket.emit("accept", request.sender, request.typeOfEncryption);
+        else {
+            socket.emit("reject", request.sender);
+            
+            setRequestsToMe(requests =>
+                requests.filter(requestToMe => requestToMe.sender !== request.sender));
+            
+            setSubsetRequestsToMe(requests =>
+                requests.filter(requestToMe => requestToMe.sender !== request.sender));
+        }
         
-        resetChatWindow();
-        initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver");
-        setShowChatSession();
     }
 
     return (

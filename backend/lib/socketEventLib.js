@@ -25,7 +25,7 @@ export const socketConnectEvent = async (socket) => {
 
         socket.join(socket.userId);
 
-        const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase()
+        const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase();
         socket.broadcast.emit("newUser", {
             username: socket.userId,
             profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png` 
@@ -110,10 +110,7 @@ export const joinAckEvent = async (socket, roomId, ack) => {
 
 // First call by receiver only, then sender in response to receiver
 export const shareBasesEvent = (socket, roomId, bases) => {
-    socket.to(roomId).emit("bases", {
-        bases: bases,
-        sender: socket.userId
-    });
+    socket.to(roomId).emit("bases", bases, socket.userId);
 };
 
 // Emitted by sender only
@@ -124,10 +121,10 @@ export const calculateQBEREvent = (socket, roomId, subset) => {
 
 // Emitted by receiver only
 // If satisfied, set chatSession to roomId, else, reset everything else
-export const shareQBERResultEvent = (socket, roomId, qberSatisfied) => {
-    socket.to(roomId).emit("qberResult", qberSatisfied);
+export const shareQBERResultEvent = (socket, roomId, qber) => {
+    socket.to(roomId).emit("qberResult", qber);
 
-    if (qberSatisfied) {
+    if (qber > 10) {
         socket.keyGenSession = false;
         socket.chatSession = roomId;
     }
@@ -139,15 +136,26 @@ export const updateSocketDataWhenQBERAccepted = (socket, roomId) => {
 }
 
 export const sendMessageEvent = (socket, roomId, message) => {
+    const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase();
+
     socket.to(roomId).emit("message", {
         message: message,
-        sender: socket.userId
+        sender: socket.userId,
+        profilePic: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png`
     });
+};
+
+export const sessionDisturbedEvent = (socket, roomId, message) => {
+    socket.to(roomId).emit("sessionDisturbed", message);
+    if (roomId !== socket.userId)
+        socket.leave(roomId);
+    resetSocketStats(socket);
 };
 
 export const sessionEndEvent = (socket, roomId) => {
     socket.to(roomId).emit("sessionEnd");
-    socket.leave(roomId);
+    if (roomId !== socket.userId)
+        socket.leave(roomId);
     resetSocketStats(socket);
 }
 
@@ -223,7 +231,7 @@ export const socketDisconnectEvent = async (socket) => {
         }
 
         if (socket.chatSession) {
-            socket.to(socket.chatSession).emit("sessionDisturbed"); // call leave event
+            socket.to(socket.chatSession).emit("sessionDisturbed", "Participant left"); // call leave event
         }
 
         socket.broadcast.emit("userLeft", socket.userId);
