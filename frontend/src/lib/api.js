@@ -5,8 +5,14 @@ const server = import.meta.env.VITE_SERVER_ADDR;
 
 const apiCaller = axios.create({
     baseURL: `${server}/api`,
-    headers: { "Authorization": localStorage.getItem("access-token") },
     withCredentials: true
+});
+
+// Add auth token dynamically on every request
+apiCaller.interceptors.request.use((config) => {
+    const token = localStorage.getItem("access-token");
+    if (token) config.headers.Authorization = token;
+    return config;
 });
 
 apiCaller.interceptors.response.use(
@@ -21,16 +27,13 @@ apiCaller.interceptors.response.use(
                 const authResponse = await authCaller.post("/refresh");
                 localStorage.setItem("access-token", `Bearer ${authResponse.data.accessToken}`);
                 originalRequest.headers.Authorization = localStorage.getItem("access-token");
-                
                 return axios(originalRequest);
-            }
-            catch {
+            } catch {
                 return Promise.reject(error);
             }
-            
         }
         return Promise.reject(error);
     }
-)
+);
 
 export default apiCaller;

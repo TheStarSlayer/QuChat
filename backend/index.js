@@ -7,6 +7,8 @@ import apiRouter from "./routes/api.route.js";
 import socketInit from "./io.index.js";
 import { Server } from "socket.io";
 import cors from "cors";
+import dns from 'dns';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const SERVER_PORT = 8596;
 const IO_PORT = 8597;

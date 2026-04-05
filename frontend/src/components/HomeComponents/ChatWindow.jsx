@@ -10,17 +10,21 @@ function ChatWindow() {
     const {
         showNewRequest, showRequestsToMe,
         showEavesdroppableRequests, showChatSession
-    } = useContext(HomeContext)
+    } = useContext(HomeContext);
 
-    if (showNewRequest) 
-        return <NewRequest />;
-    if (showRequestsToMe) 
-        return <RequestsToMe />;
-    if (showEavesdroppableRequests)
-        return <EavesdroppableRequests />;
-    if (showChatSession)
-        return <ChatSession />;
-    return <EmptyChatWindow />;
+    const renderContent = () => {
+        if (showNewRequest) return <NewRequest />;
+        if (showRequestsToMe) return <RequestsToMe />;
+        if (showEavesdroppableRequests) return <EavesdroppableRequests />;
+        if (showChatSession) return <ChatSession />;
+        return <EmptyChatWindow />;
+    };
+
+    return (
+        <div style={{ display: "flex", flex: 1, height: "100%", overflow: "hidden" }}>
+            {renderContent()}
+        </div>
+    );
 }
 
 export default ChatWindow;

@@ -35,8 +35,7 @@ export default function LoginUI() {
         const draw = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             dots.forEach(d => {
-                d.x += d.dx;
-                d.y += d.dy;
+                d.x += d.dx; d.y += d.dy;
                 if (d.x < 0 || d.x > canvas.width) d.dx *= -1;
                 if (d.y < 0 || d.y > canvas.height) d.dy *= -1;
                 ctx.beginPath();
@@ -71,187 +70,167 @@ export default function LoginUI() {
         };
     }, []);
 
-    const handleKey = (e) => {
-        if (e.key === "Enter") login();
-    };
+    const handleKey = (e) => { if (e.key === "Enter") login(); };
 
     return (
-        <>
-            <style>{`
-                .qc-root { background: #0d0f1a; font-family: 'Courier New', Courier, monospace; }
-                .qc-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-                .qc-card {
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(33,150,243,0.2) !important;
-                    border-radius: 16px !important;
-                    backdrop-filter: blur(12px);
-                    box-shadow: 0 0 40px rgba(33,150,243,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
-                    max-width: 380px;
-                }
-                .qc-logo-icon {
-                    width: 56px; height: 56px; border-radius: 50%;
-                    background: rgba(33,150,243,0.1);
-                    border: 1px solid rgba(33,150,243,0.3);
-                }
-                .qc-logo-qu { color: #2196F3; font-size: 28px; font-weight: 700; }
-                .qc-logo-chat { color: #fff; font-size: 28px; font-weight: 700; }
-                .qc-tagline { font-size: 9px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
-                .qc-divider {
-                    height: 1px;
-                    background: linear-gradient(90deg, transparent, rgba(33,150,243,0.3), transparent);
-                }
-                .qc-label { font-size: 9px; letter-spacing: 2px; color: rgba(255,255,255,0.4); }
-                .qc-input-wrap { position: relative; }
-                .qc-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-                .qc-input {
-                    width: 100%; padding: 10px 12px 10px 34px;
-                    background: rgba(255,255,255,0.05);
-                    border: 1px solid rgba(33,150,243,0.2);
-                    border-radius: 8px; color: #fff;
-                    font-size: 13px; font-family: 'Courier New', Courier, monospace;
-                    outline: none; box-sizing: border-box; transition: border-color 0.2s;
-                }
-                .qc-input:focus { border-color: rgba(33,150,243,0.6); background: rgba(255,255,255,0.07); }
-                .qc-input::placeholder { color: rgba(255,255,255,0.25); }
-                .qc-security {
-                    background: rgba(216,121,0,0.08);
-                    border: 1px solid rgba(216,121,0,0.2);
-                    border-radius: 8px;
-                    font-size: 11px; color: rgba(216,121,0,0.9);
-                    line-height: 1.4;
-                }
-                .qc-btn-primary {
-                    background: linear-gradient(135deg, #2196F3, #1565C0);
-                    border: none; border-radius: 8px;
-                    color: #fff; font-size: 13px; font-weight: 700;
-                    letter-spacing: 1px; font-family: 'Courier New', Courier, monospace;
-                    transition: background 0.3s; cursor: pointer;
-                }
-                .qc-btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #1976D2, #D87900); }
-                .qc-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-                .qc-separator-line { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
-                .qc-separator-text { font-size: 9px; letter-spacing: 1.5px; color: rgba(255,255,255,0.25); white-space: nowrap; }
-                .qc-btn-secondary {
-                    background: transparent;
-                    border: 1px solid rgba(255,255,255,0.15);
-                    border-radius: 8px; color: rgba(255,255,255,0.6);
-                    font-size: 13px; font-family: 'Courier New', Courier, monospace;
-                    transition: border-color 0.2s, color 0.2s; cursor: pointer;
-                }
-                .qc-btn-secondary:hover:not(:disabled) { border-color: #2196F3; color: #2196F3; }
-                .qc-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
-                .qc-footer-link { font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.2); cursor: pointer; }
-                .qc-footer-dot { color: rgba(255,255,255,0.15); font-size: 10px; }
-            `}</style>
+        <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden"
+            style={{ background: "#0d0f1a", fontFamily: "'Courier New', Courier, monospace" }}>
 
-            <div className="qc-root min-vh-100 w-100 d-flex align-items-center justify-content-center position-relative overflow-hidden">
-                <canvas ref={canvasRef} className="qc-canvas" />
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-                <div className="qc-card w-100 p-4 p-md-5 mx-3 position-relative" style={{ zIndex: 10 }}>
+            <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl px-8 py-9"
+                style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(33,150,243,0.2)",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 0 40px rgba(33,150,243,0.08), inset 0 1px 0 rgba(255,255,255,0.06)"
+                }}>
 
-                    {/* Logo */}
-                    <div className="d-flex flex-column align-items-center gap-2 mb-4">
-                        <div className="qc-logo-icon d-flex align-items-center justify-content-center">
-                            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                                <circle cx="14" cy="14" r="13" stroke="#2196F3" strokeWidth="1.5" />
-                                <circle cx="14" cy="14" r="7" stroke="#D87900" strokeWidth="1" strokeDasharray="2 2" />
-                                <circle cx="14" cy="14" r="2.5" fill="#2196F3" />
-                            </svg>
-                        </div>
-                        <div>
-                            <span className="qc-logo-qu">Qu</span>
-                            <span className="qc-logo-chat">Chat</span>
-                        </div>
-                        <p className="qc-tagline mb-0">QUANTUM-ENCRYPTED ACCESS</p>
-                    </div>
-
-                    <div className="qc-divider mb-4" />
-
-                    {/* Username */}
-                    <div className="mb-3">
-                        <label className="qc-label d-block mb-1">IDENTITY HANDLE</label>
-                        <div className="qc-input-wrap">
-                            <svg className="qc-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2196F3" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            <input
-                                type="text"
-                                className="qc-input"
-                                value={username}
-                                onChange={e => setUsername(e.target.value)}
-                                onKeyDown={handleKey}
-                                placeholder="quantum_user_01"
-                                spellCheck={false}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Password */}
-                    <div className="mb-3">
-                        <label className="qc-label d-block mb-1">ACCESS KEY</label>
-                        <div className="qc-input-wrap">
-                            <svg className="qc-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2196F3" strokeWidth="2">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            </svg>
-                            <input
-                                type="password"
-                                className="qc-input"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                onKeyDown={handleKey}
-                                placeholder="••••••••••••"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Security badge */}
-                    <div className="qc-security d-flex align-items-start gap-2 p-2 mb-4">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D87900" strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                {/* Logo */}
+                <div className="flex flex-col items-center gap-2 mb-6">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                        style={{ background: "rgba(33,150,243,0.1)", border: "1px solid rgba(33,150,243,0.3)" }}>
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                            <circle cx="14" cy="14" r="13" stroke="#2196F3" strokeWidth="1.5" />
+                            <circle cx="14" cy="14" r="7" stroke="#D87900" strokeWidth="1" strokeDasharray="2 2" />
+                            <circle cx="14" cy="14" r="2.5" fill="#2196F3" />
                         </svg>
-                        <span>Quantum-resistant end-to-end encryption active for this session.</span>
                     </div>
-
-                    {/* Primary button */}
-                    <button
-                        className="qc-btn-primary w-100 py-2 mb-4"
-                        onClick={login}
-                        disabled={windowLoading}
-                    >
-                        {windowLoading ? "INITIALIZING..." : "Initialize Session"}
-                    </button>
-
-                    {/* Separator */}
-                    <div className="d-flex align-items-center gap-2 mb-3">
-                        <div className="qc-separator-line" />
-                        <span className="qc-separator-text">NEW TO THE SANCTUARY?</span>
-                        <div className="qc-separator-line" />
+                    <div className="text-3xl font-bold tracking-tight leading-none">
+                        <span style={{ color: "#2196F3" }}>Qu</span>
+                        <span className="text-white">Chat</span>
                     </div>
+                    <p style={{ fontSize: "9px", letterSpacing: "3px", color: "rgba(255,255,255,0.3)" }}>
+                        QUANTUM-ENCRYPTED ACCESS
+                    </p>
+                </div>
 
-                    {/* Secondary button */}
-                    <button
-                        className="qc-btn-secondary w-100 py-2 mb-4"
-                        onClick={() => setIsLogin(false)}
-                        disabled={windowLoading}
-                    >
-                        Create New Identity
-                    </button>
+                {/* Divider */}
+                <div className="mb-6" style={{ height: "1px", background: "linear-gradient(90deg, transparent, rgba(33,150,243,0.3), transparent)" }} />
 
-                    {/* Footer */}
-                    <div className="d-flex justify-content-center align-items-center gap-2">
-                        <span className="qc-footer-link">Terms of Void</span>
-                        <span className="qc-footer-dot">·</span>
-                        <span className="qc-footer-link">Privacy Protocol</span>
-                        <span className="qc-footer-dot">·</span>
-                        <span className="qc-footer-link">Nodes</span>
+                {/* Username */}
+                <div className="mb-4">
+                    <label className="block mb-1.5" style={{ fontSize: "9px", letterSpacing: "2px", color: "rgba(255,255,255,0.4)" }}>
+                        IDENTITY HANDLE
+                    </label>
+                    <div className="relative">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2196F3" strokeWidth="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                        </svg>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                            onKeyDown={handleKey}
+                            placeholder="quantum_user_01"
+                            spellCheck={false}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-lg text-white outline-none transition-all"
+                            style={{
+                                background: "rgba(255,255,255,0.05)",
+                                border: "1px solid rgba(33,150,243,0.2)",
+                                fontFamily: "'Courier New', Courier, monospace",
+                                fontSize: "13px"
+                            }}
+                            onFocus={e => e.target.style.borderColor = "rgba(33,150,243,0.6)"}
+                            onBlur={e => e.target.style.borderColor = "rgba(33,150,243,0.2)"}
+                        />
                     </div>
+                </div>
 
+                {/* Password */}
+                <div className="mb-4">
+                    <label className="block mb-1.5" style={{ fontSize: "9px", letterSpacing: "2px", color: "rgba(255,255,255,0.4)" }}>
+                        ACCESS KEY
+                    </label>
+                    <div className="relative">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2196F3" strokeWidth="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            onKeyDown={handleKey}
+                            placeholder="••••••••••••"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-lg text-white outline-none transition-all"
+                            style={{
+                                background: "rgba(255,255,255,0.05)",
+                                border: "1px solid rgba(33,150,243,0.2)",
+                                fontFamily: "'Courier New', Courier, monospace",
+                                fontSize: "13px"
+                            }}
+                            onFocus={e => e.target.style.borderColor = "rgba(33,150,243,0.6)"}
+                            onBlur={e => e.target.style.borderColor = "rgba(33,150,243,0.2)"}
+                        />
+                    </div>
+                </div>
+
+                {/* Security badge */}
+                <div className="flex items-start gap-2 rounded-lg px-3 py-2 mb-5"
+                    style={{ background: "rgba(216,121,0,0.08)", border: "1px solid rgba(216,121,0,0.2)" }}>
+                    <svg className="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D87900" strokeWidth="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    <span style={{ fontSize: "11px", color: "rgba(216,121,0,0.9)", fontFamily: "'Courier New', Courier, monospace", lineHeight: 1.4 }}>
+                        Quantum-resistant end-to-end encryption active for this session.
+                    </span>
+                </div>
+
+                {/* Primary button */}
+                <button
+                    onClick={login}
+                    disabled={windowLoading}
+                    className="w-full py-3 rounded-lg font-bold text-white tracking-wide transition-all mb-5 disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{
+                        background: "linear-gradient(135deg, #2196F3, #1565C0)",
+                        fontFamily: "'Courier New', Courier, monospace",
+                        fontSize: "13px",
+                        letterSpacing: "1px"
+                    }}
+                    onMouseEnter={e => { if (!windowLoading) e.currentTarget.style.background = "linear-gradient(135deg, #1976D2, #D87900)"; }}
+                    onMouseLeave={e => e.currentTarget.style.background = "linear-gradient(135deg, #2196F3, #1565C0)"}
+                >
+                    {windowLoading ? "INITIALIZING..." : "Initialize Session"}
+                </button>
+
+                {/* Separator */}
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="flex-1" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
+                    <span style={{ fontSize: "9px", letterSpacing: "1.5px", color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" }}>
+                        NEW TO THE SANCTUARY?
+                    </span>
+                    <div className="flex-1" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
+                </div>
+
+                {/* Secondary button */}
+                <button
+                    onClick={() => setIsLogin(false)}
+                    disabled={windowLoading}
+                    className="w-full py-3 rounded-lg transition-all mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                        background: "transparent",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        color: "rgba(255,255,255,0.6)",
+                        fontFamily: "'Courier New', Courier, monospace",
+                        fontSize: "13px"
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#2196F3"; e.currentTarget.style.color = "#2196F3"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+                >
+                    Create New Identity
+                </button>
+
+                {/* Footer */}
+                <div className="flex justify-center items-center gap-2">
+                    {["Terms of Void", "·", "Privacy Protocol", "·", "Nodes"].map((t, i) => (
+                        <span key={i} style={{ fontSize: "10px", letterSpacing: "1px", color: "rgba(255,255,255,0.2)", cursor: t === "·" ? "default" : "pointer" }}>
+                            {t}
+                        </span>
+                    ))}
                 </div>
             </div>
 
             {windowLoading && <WindowLoading message="Initializing quantum session..." />}
-        </>
+        </div>
     );
 }

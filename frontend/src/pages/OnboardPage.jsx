@@ -16,35 +16,42 @@ function OnboardPage() {
     const [showLengthConstraint, setShowLengthConstraint] = useState(true);
     const [showSpCharConstraint, setShowSpCharConstraint] = useState(true);
     const [showAlpNumConstraint, setShowAlpNumConstraint] = useState(true);
-    
+
     const navigate = useNavigate();
 
+    // Only redirect if already logged in — no toast here
     useEffect(() => {
+        const token = localStorage.getItem("access-token");
+        if (!token) return; // No token, stay on onboard
+
         apiCaller.get("/verify")
-        .then(() => {
-            navigate("/");
-        })
-        .catch(() => {
-            toast.info("Login to avail services");
-        });
+            .then(() => {
+                navigate("/");
+            })
+            .catch(() => {
+                // Token invalid/expired — stay on onboard, no toast
+                localStorage.removeItem("access-token");
+            });
     }, [navigate]);
 
     async function login() {
+        if (!username || !password) {
+            toast.error("Please enter username and password");
+            return;
+        }
         try {
             setWindowLoading(true);
-            const response = await authCaller.post("/login", { username: username, password: password });
+            const response = await authCaller.post("/login", { username, password });
             localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
             navigate("/");
-        }
-        catch (error) {
+        } catch (error) {
             if (error.response?.status === 409)
                 toast.error("User is already logged in!");
             else if (error.response?.status === 400)
                 toast.error("Invalid credentials!");
             else
                 toast.error("Unexpected error occurred!");
-        }
-        finally {
+        } finally {
             setUsername("");
             setPassword("");
             setWindowLoading(false);
@@ -52,16 +59,21 @@ function OnboardPage() {
     }
 
     async function signup() {
+        if (!username || !password) {
+            toast.error("Please fill in all fields");
+            return;
+        }
         try {
             setWindowLoading(true);
-            await authCaller.post("/signup", { username: username, password: password });
-            toast.success("User created successfully! Login to avail services.");
+            await authCaller.post("/signup", { username, password });
+            toast.success("Account created! Please log in.");
             setIsLogin(true);
-        }
-        catch {
-            toast.error("Unexpected error occurred! Could not create new user!");
-        }
-        finally {
+        } catch (error) {
+            if (error.response?.status === 400)
+                toast.error("Username already exists!");
+            else
+                toast.error("Unexpected error occurred!");
+        } finally {
             setUsername("");
             setPassword("");
             setWindowLoading(false);
@@ -69,33 +81,28 @@ function OnboardPage() {
     }
 
     function checkPasswordLength() {
-        let lengthNotGood = false;
-        let containsNum = false;
-        let containsAlp = false;
-        let containsSpCh = false;
-
-        if (password.length < 6) {
-            lengthNotGood = true;
-        }
-
-        containsNum = password.match(/[0-9]/g);
-        containsAlp = password.match(/[a-zA-Z]/g);
-        containsSpCh = password.match(/[^a-zA-Z0-9]/g);
+        const lengthNotGood = password.length < 6;
+        const containsNum = /[0-9]/.test(password);
+        const containsAlp = /[a-zA-Z]/.test(password);
+        const containsSpCh = /[^a-zA-Z0-9]/.test(password);
 
         const criteria = lengthNotGood || !(containsNum && containsAlp) || !containsSpCh;
         setShowPasswordConstraints(criteria);
-
         setShowLengthConstraint(lengthNotGood);
         setShowAlpNumConstraint(!(containsAlp && containsNum));
         setShowSpCharConstraint(!containsSpCh);
     }
 
     return (
-        <OnboardContext.Provider value={{ 
-                login, signup, checkPasswordLength, username, setUsername, password, setPassword, windowLoading, isLogin, setIsLogin, showPasswordConstraints, showLengthConstraint, showSpCharConstraint, showAlpNumConstraint 
-            }}
-        >
-            { isLogin ? <LoginUI /> : <SignupUI /> }
+        <OnboardContext.Provider value={{
+            login, signup, checkPasswordLength,
+            username, setUsername,
+            password, setPassword,
+            windowLoading, isLogin, setIsLogin,
+            showPasswordConstraints,
+            showLengthConstraint, showSpCharConstraint, showAlpNumConstraint
+        }}>
+            {isLogin ? <LoginUI /> : <SignupUI />}
         </OnboardContext.Provider>
     );
 }
