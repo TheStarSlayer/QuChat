@@ -128,9 +128,12 @@ async def random_indices_generator(
         new_indices = await random_indices_gen_helper(keyLength, typeOfMachine, min_length, index_range)
         observed_indices.update(new_indices)
     
+    observed_indices_list = list(observed_indices)
+    observed_indices_list.sort()
+    
     return JSONResponse(
         status_code=200,
-        content={ "randIndices": list(observed_indices) }
+        content={ "randIndices": observed_indices_list }
     )
 
 async def random_indices_gen_helper(

@@ -1,5 +1,6 @@
 import HomeContext from "../../../contexts/HomeContext";
 import { useContext, useState } from "react";
+import { toast } from "react-toastify";
 
 function RequestsToMe() {
     /**
@@ -14,12 +15,12 @@ function RequestsToMe() {
      */
     
     const {
-        searchTermForRTM, setSearchTermForRTM,
         requestsToMe, resetChatWindow, socketRef,
         initChatSession, setShowChatSession,
         setRequestsToMe
     } = useContext(HomeContext);
 
+    const [searchTermForRTM, setSearchTermForRTM] = useState("");
     const [subsetRequestsToMe, setSubsetRequestsToMe] = useState([...requestsToMe]);
 
     function searcher() {
@@ -35,23 +36,27 @@ function RequestsToMe() {
     async function respondToRequest(request, response) {
         const socket = socketRef.current;
         
-        if (response && (request.createdAt + request.timeLimitInMs > Date.now()) ) {
-            socket.emit("accept", request.sender, request.typeOfEncryption);
-        
-            resetChatWindow();
-            initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver", request.isSimulator);
-            setShowChatSession();
-        }
-        else {
-            socket.emit("reject", request.sender);
+        if (request.createdAt + request.timeLimitInMs > Date.now()) {
+            toast.info("This request is timed out! Auto-rejecting...");
+            response = false;
+
+            if (response) {
+                socket.emit("accept", request.sender, request.typeOfEncryption);
             
-            setRequestsToMe(requests =>
-                requests.filter(requestToMe => requestToMe.sender !== request.sender));
-            
-            setSubsetRequestsToMe(requests =>
-                requests.filter(requestToMe => requestToMe.sender !== request.sender));
+                resetChatWindow();
+                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver", request.isSimulator);
+                setShowChatSession();
+            }
+            else {
+                socket.emit("reject", request.sender);
+                
+                setRequestsToMe(requests =>
+                    requests.filter(requestToMe => requestToMe.sender !== request.sender));
+                
+                setSubsetRequestsToMe(requests =>
+                    requests.filter(requestToMe => requestToMe.sender !== request.sender));
+            }
         }
-        
     }
 
     return (

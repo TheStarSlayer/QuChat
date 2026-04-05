@@ -15,12 +15,12 @@ function EavesdroppableRequests() {
      */
 
     const {
-        searchTermForEDR, setSearchTermForEDR,
         eavesdroppableRequests, resetChatWindow,
         setWindowLoading, socketRef,
         userId, initChatSession, setShowChatSession
     } = useContext(HomeContext);
 
+    const [searchTermForEDR, setSearchTermForEDR] = useState("");
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
 
     function searcher() {
