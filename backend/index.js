@@ -7,8 +7,6 @@ import apiRouter from "./routes/api.route.js";
 import socketInit from "./io.index.js";
 import { Server } from "socket.io";
 import cors from "cors";
-import dns from 'dns';
-dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const SERVER_PORT = 8596;
 const IO_PORT = 8597;
@@ -17,7 +15,7 @@ const app = express();
 
 const io = new Server(IO_PORT, {
     cors: {
-        origin: ['http://localhost:8595', 'http://localhost:8596']
+        origin: [process.env.FRONTEND_ADDR, process.env.SERVER_ADDR]
     }
 });
 
@@ -29,7 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use(cors({
-    origin: ['http://localhost:8595', 'http://localhost:8597'],
+    origin: [process.env.FRONTEND_ADDR, process.env.IO_ADDR],
     credentials: true
 }));
 

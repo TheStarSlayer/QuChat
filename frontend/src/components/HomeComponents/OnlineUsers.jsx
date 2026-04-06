@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import HomeContext from "../../contexts/HomeContext";
 
 function OnlineUsers() {
@@ -10,6 +10,12 @@ function OnlineUsers() {
 
     const [searchTermForUsers, setSearchTermForUsers] = useState("");
     const [subsetOnlineUsers, setSubsetOnlineUsers] = useState([...onlineUsers]);
+
+    useEffect(() => {
+        (() => {
+            setSubsetOnlineUsers([...onlineUsers]);
+        })();
+    }, [onlineUsers]);
 
     function searcher(value) {
         setSearchTermForUsers(value);

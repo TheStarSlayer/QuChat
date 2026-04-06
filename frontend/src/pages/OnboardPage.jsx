@@ -80,11 +80,11 @@ function OnboardPage() {
         }
     }
 
-    function checkPasswordLength() {
-        const lengthNotGood = password.length < 6;
-        const containsNum = /[0-9]/.test(password);
-        const containsAlp = /[a-zA-Z]/.test(password);
-        const containsSpCh = /[^a-zA-Z0-9]/.test(password);
+    function checkPasswordLength(newPassword) {
+        const lengthNotGood = newPassword.length < 6;
+        const containsNum = /[0-9]/.test(newPassword);
+        const containsAlp = /[a-zA-Z]/.test(newPassword);
+        const containsSpCh = /[^a-zA-Z0-9]/.test(newPassword);
 
         const criteria = lengthNotGood || !(containsNum && containsAlp) || !containsSpCh;
         setShowPasswordConstraints(criteria);

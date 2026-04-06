@@ -149,7 +149,7 @@ export default function SignupUI() {
                         <input
                             type="password"
                             value={password}
-                            onChange={e => { setPassword(e.target.value); checkPasswordLength(); }}
+                            onChange={e => { setPassword(e.target.value); checkPasswordLength(e.target.value); }}
                             placeholder="••••••••••••"
                             className="w-full pl-9 pr-3 py-2.5 rounded-lg text-white outline-none transition-all"
                             style={{
@@ -192,17 +192,6 @@ export default function SignupUI() {
                     </div>
                 )}
 
-                {/* Security badge */}
-                <div className="flex items-start gap-2 rounded-lg px-3 py-2 mb-5"
-                    style={{ background: "rgba(216,121,0,0.08)", border: "1px solid rgba(216,121,0,0.2)" }}>
-                    <svg className="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D87900" strokeWidth="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                    <span style={{ fontSize: "11px", color: "rgba(216,121,0,0.9)", fontFamily: "'Courier New', Courier, monospace", lineHeight: 1.4 }}>
-                        Your data will be shielded by end-to-end lattice-based encryption protocols immediately upon registration.
-                    </span>
-                </div>
-
                 {/* Sign up button */}
                 <button
                     onClick={signup}
@@ -238,25 +227,6 @@ export default function SignupUI() {
                     >
                         Login
                     </button>
-                </div>
-
-                {/* Footer */}
-                <div className="flex justify-center items-center gap-2 mb-4">
-                    {["Terms of Service", "·", "Privacy Shield"].map((t, i) => (
-                        <span key={i} style={{ fontSize: "10px", letterSpacing: "1px", color: "rgba(255,255,255,0.2)", cursor: t === "·" ? "default" : "pointer" }}>
-                            {t}
-                        </span>
-                    ))}
-                </div>
-
-                {/* Status badges */}
-                <div className="flex justify-center gap-3">
-                    {[["#2196F3", "QUANTUM READY"], ["#D87900", "ENCRYPTED NODE"]].map(([color, label]) => (
-                        <div key={label} className="flex items-center gap-1.5" style={{ fontSize: "9px", letterSpacing: "1.5px", color: "rgba(255,255,255,0.25)" }}>
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-                            {label}
-                        </div>
-                    ))}
                 </div>
             </div>
 

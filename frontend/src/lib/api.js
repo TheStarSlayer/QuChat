@@ -11,7 +11,8 @@ const apiCaller = axios.create({
 // Add auth token dynamically on every request
 apiCaller.interceptors.request.use((config) => {
     const token = localStorage.getItem("access-token");
-    if (token) config.headers.Authorization = token;
+    if (token)
+        config.headers.Authorization = token;
     return config;
 });
 

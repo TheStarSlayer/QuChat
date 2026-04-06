@@ -131,7 +131,9 @@ function HomePage() {
                 resetChatWindow();
             });
 
-            return () => { socket.disconnect(); };
+            return () => {
+                socket.disconnect();
+            };
         }
     }, [userId]);
 

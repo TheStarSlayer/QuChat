@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
-import { redisClient } from "../index.js";
-import { OnlineUsers } from "../models/user.model.js";
+import checkIfOnline from "../lib/checkIfOnline.js";
 
 export const ioAuth = async (socket, next) => {
     const token = socket.handshake.auth.token;
@@ -11,16 +10,7 @@ export const ioAuth = async (socket, next) => {
         });
         const userId = payload.userId;
 
-        let userExists;
-        try {
-            userExists = await redisClient.sIsMember("onlineUsers", userId);
-        }
-        catch (err) {
-            console.error("Unexpected error occurred", err.message);
-            userExists = await OnlineUsers.exists({ username: userId });
-        }
-
-        if (userExists)
+        if (await checkIfOnline(userId))
             throw new Error("User already exists!");
 
         socket.userId = userId;

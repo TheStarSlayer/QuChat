@@ -165,17 +165,6 @@ export default function LoginUI() {
                     </div>
                 </div>
 
-                {/* Security badge */}
-                <div className="flex items-start gap-2 rounded-lg px-3 py-2 mb-5"
-                    style={{ background: "rgba(216,121,0,0.08)", border: "1px solid rgba(216,121,0,0.2)" }}>
-                    <svg className="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D87900" strokeWidth="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    </svg>
-                    <span style={{ fontSize: "11px", color: "rgba(216,121,0,0.9)", fontFamily: "'Courier New', Courier, monospace", lineHeight: 1.4 }}>
-                        Quantum-resistant end-to-end encryption active for this session.
-                    </span>
-                </div>
-
                 {/* Primary button */}
                 <button
                     onClick={login}
@@ -197,7 +186,7 @@ export default function LoginUI() {
                 <div className="flex items-center gap-2 mb-4">
                     <div className="flex-1" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
                     <span style={{ fontSize: "9px", letterSpacing: "1.5px", color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" }}>
-                        NEW TO THE SANCTUARY?
+                        NEW TO THE APP?
                     </span>
                     <div className="flex-1" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
                 </div>
@@ -220,14 +209,6 @@ export default function LoginUI() {
                     Create New Identity
                 </button>
 
-                {/* Footer */}
-                <div className="flex justify-center items-center gap-2">
-                    {["Terms of Void", "·", "Privacy Protocol", "·", "Nodes"].map((t, i) => (
-                        <span key={i} style={{ fontSize: "10px", letterSpacing: "1px", color: "rgba(255,255,255,0.2)", cursor: t === "·" ? "default" : "pointer" }}>
-                            {t}
-                        </span>
-                    ))}
-                </div>
             </div>
 
             {windowLoading && <WindowLoading message="Initializing quantum session..." />}
