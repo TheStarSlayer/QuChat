@@ -15,7 +15,7 @@ const app = express();
 
 const io = new Server(IO_PORT, {
     cors: {
-        origin: ['http://localhost:8595', 'http://localhost:8596']
+        origin: [process.env.FRONTEND_ADDR, process.env.SERVER_ADDR]
     }
 });
 
@@ -27,7 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use(cors({
-    origin: ['http://localhost:8595', 'http://localhost:8597'],
+    origin: [process.env.FRONTEND_ADDR, process.env.IO_ADDR],
     credentials: true
 }));
 

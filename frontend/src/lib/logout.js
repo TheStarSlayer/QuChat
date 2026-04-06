@@ -6,10 +6,12 @@ export default async function logout(navigate) {
         await authCaller.post("/logout");
         localStorage.removeItem("access-token");
         navigate("/onboard");
+        toast.success("Logged out successfully!");
     }
     catch (error) {
-        if (error.response?.status === 500) {
+        if (error.response?.status === 500)
             toast.error("Could not logout - internal server error");
-        }
+        else
+            toast.error(error.response.data.error);
     }
 }

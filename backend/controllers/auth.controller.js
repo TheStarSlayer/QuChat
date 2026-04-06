@@ -3,6 +3,13 @@ import checkIfOnline from "../lib/checkIfOnline.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
+const cookieConfig = {
+    httpOnly: true,
+    secure: process.env.PROD === "true",
+    sameSite: process.env.PROD === "true" ? "none" : "lax",
+    path: "/"
+};
+
 export const signupController = async (req, res) => {
     try {
         if (req.cookies.refreshToken !== undefined)
@@ -34,9 +41,6 @@ export const signupController = async (req, res) => {
 
 export const loginController = async (req, res) => {
     try {
-        if (req.cookies.refreshToken !== undefined)
-            return res.status(409).json({ error: "User is already logged in" });
-
         const { username, password } = req.body;
         const userDoc = await User.findOne({ username: username });
 
@@ -62,13 +66,8 @@ export const loginController = async (req, res) => {
 
         userDoc.refreshToken = await bcrypt.hash(refreshToken, parseInt(process.env.SALT_ROUNDS));
         await userDoc.save();
-
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.PROD === "true",
-            sameSite: "none",
-            path: "/auth"
-        });
+        
+        res.cookie("refreshToken", refreshToken, cookieConfig);
 
         return res.status(200).json({
             msg: "Logged in successfully!",
@@ -119,12 +118,7 @@ export const refreshController = async (req, res) => {
         userDoc.refreshToken = await bcrypt.hash(refreshToken, parseInt(process.env.SALT_ROUNDS));
         await userDoc.save();
 
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.PROD === "true",
-            sameSite: "none",
-            path: "/auth"
-        });
+        res.cookie("refreshToken", refreshToken, cookieConfig);
 
         return res.status(200).json({
             msg: "Refreshed access token!",
