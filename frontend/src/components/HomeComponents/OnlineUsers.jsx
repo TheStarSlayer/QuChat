@@ -11,12 +11,6 @@ function OnlineUsers() {
     const [searchTermForUsers, setSearchTermForUsers] = useState("");
     const [subsetOnlineUsers, setSubsetOnlineUsers] = useState([...onlineUsers]);
 
-    useEffect(() => {
-        (() => {
-            setSubsetOnlineUsers([...onlineUsers]);
-        })();
-    }, [onlineUsers]);
-
     function searcher(value) {
         setSearchTermForUsers(value);
         if (value === "") {
@@ -26,6 +20,11 @@ function OnlineUsers() {
             setSubsetOnlineUsers(onlineUsers.filter(user => regex.test(user.username)));
         }
     }
+
+    useEffect(() => {
+        (() => searcher(searchTermForUsers))();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onlineUsers]);
 
     function newRequest(receiverUserId) {
         if (showChatSession) return;
@@ -60,7 +59,7 @@ function OnlineUsers() {
                     <input
                         type="text"
                         value={searchTermForUsers}
-                        onChange={e => searcher(e.target.value)}
+                        onChange={e => {setSearchTermForUsers(e.target.value); searcher(e.target.value);}}
                         placeholder="Search users..."
                         disabled={isLocked}
                         className="w-full pl-9 pr-3 py-2 rounded-xl text-white outline-none text-xs transition-all"
