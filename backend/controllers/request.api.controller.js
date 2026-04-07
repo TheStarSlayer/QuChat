@@ -195,6 +195,6 @@ export const finishRequestController = async (req, res) => {
     console.log(finishStatus);
     const result = await finishRequest(userId, finishStatus);
     if (result)
-        return res.status(204);
+        return res.sendStatus(204);
     return res.status(500).json({ msg: "Internal server error" });
 };

@@ -31,30 +31,48 @@ function EavesdroppableRequests() {
         setWindowLoading("Sneaking...");
         try {
             await apiCaller.patch(`/eavesdrop/${request.sender}`);
+            
             const socket = socketRef.current;
-            setWindowLoading("Waiting for response from receiver...");
+            socket.emit("eavesdropRequest", request.sender);
+
+            setWindowLoading("Sneaked in, now waiting for response from receiver...");
 
             const timeoutId = setTimeout(() => {
-                throw new Error("Request timed out");
+                toast.error("Did not catch any response!");
+                setWindowLoading("");
             }, request.timeLimitInMs);
 
             socket.once("response", (response) => {
                 clearTimeout(timeoutId);
-                if (response === "rejected") throw new Error("Receiver rejected the chat request!");
 
-                if (request.typeOfEncryption === "bb84")
-                    socket.emit("updateOnResponseAcceptQC", userId);
-                else
-                    socket.emit("updateOnResponseAccept", userId);
+                if (response === "rejected") {
+                    toast.info("This request is rejected!");
+                    setWindowLoading("");
+                    socket.emit("leave");
+                }
+                else {
+                    if (request.typeOfEncryption === "bb84")
+                        socket.emit("updateOnResponseAcceptQC", userId);
+                    else
+                        socket.emit("updateOnResponseAccept", userId);
 
-                resetChatWindow();
-                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
-                setShowChatSession(true);
+                    setWindowLoading("");
+                    resetChatWindow();
+
+                    initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
+
+                    setShowChatSession(true);
+                }
+                
             });
-        } catch (error) {
-            if (error.response?.status === 404) toast.error("This request cannot be eavesdropped now!");
-            else { toast.error(error.message); console.error(error); }
-        } finally {
+        }
+        catch (error) {
+            if (error.response?.status === 404)
+                toast.error("This request cannot be eavesdropped now!");
+            else {
+                toast.error(error.message);
+                console.error(error);
+            }
             setWindowLoading("");
         }
     }

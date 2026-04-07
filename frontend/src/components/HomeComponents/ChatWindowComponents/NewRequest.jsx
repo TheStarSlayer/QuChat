@@ -41,6 +41,7 @@ function NewRequest() {
 
             socket.emit("sendJoinRequest", request);
             setShowTimer(timeLimitInSec);
+            setWindowLoading("");
 
             const timeoutId = setTimeout(async () => {
                 setShowTimer(-1);
@@ -63,7 +64,7 @@ function NewRequest() {
                 console.log(response);
                 try {
                     if (response === "accepted") {
-                        const _ = await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
+                        await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
 
                         if (typeOfEncryption === "bb84") {
                             socket.emit("updateOnResponseAcceptQC", userId);
@@ -73,8 +74,10 @@ function NewRequest() {
                         }
                         else {
                             socket.emit("updateOnResponseAccepted", userId);
+                            console.log("Done!");
                         }
                         socket.emit("joinAck", userId, true);
+                        setWindowLoading("");
                         resetChatWindow();
 
                         initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host", request.isSimulator);
@@ -82,15 +85,21 @@ function NewRequest() {
                         setShowChatSession(true);
                     }
                     else {
-                        const _ = await apiCaller.patch("/finishRequest", { finishStatus: "rejected" });
+                        await apiCaller.patch("/finishRequest", { finishStatus: "rejected" });
+
+                        setWindowLoading("");
                         resetChatWindow();
                     }
                 }
                 catch {
                     toast.error("Could not handle request successfully!");
+
+                    setWindowLoading("");
                     resetChatWindow();
+
                     try {
                         await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                        toast.info("Request closed!");
                     }
                     catch {
                         toast.error("Could not close the request!");
@@ -100,9 +109,6 @@ function NewRequest() {
         } 
         catch {
             toast.error("Something unexpected happened!");
-        }
-        finally {
-            setWindowLoading("");
         }
     }
 
