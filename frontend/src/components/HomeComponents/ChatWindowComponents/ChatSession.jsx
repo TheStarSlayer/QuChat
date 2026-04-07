@@ -101,8 +101,12 @@ function ChatSession() {
     }
 
     function sessionStarted() {
+        setStatusWindow("");
         setFreeToChat(true);
-        toast.success("You are free to chat!");
+        if (chatRole !== "eavesdropper")
+            toast.success("You are free to chat!");
+        else
+            toast.success("Eavesdropped successfully! You can now secretly view the chat!");
     }
 
     function sendMessage() {
@@ -124,7 +128,10 @@ function ChatSession() {
 
     function closeChatSession() {
         const socket = socketRef.current;
-        socket.emit("sessionDisturbed", chatRoomId, "Participant left");
+        
+        if (chatRole !== "eavesdropper")
+            socket.emit("sessionDisturbed", chatRoomId, "Participant left");
+
         resetChatWindow();
         toast.success("Left chat session!");
     }
@@ -146,12 +153,26 @@ function ChatSession() {
             toast.info("You cannot receive requests for now!");
         })();
 
+        console.log(chatEncryption);
+        console.log(chatRole);
+
         if (chatEncryption === "none") {
-            setStatusWindow("");
-            if (chatRole !== "eavesdropper")
-                sessionStarted();
-            else
-                toast.success("Eavesdropping successfully!");
+            setStatusWindow("Waiting for acknowledgement of session from host...");
+
+            if (chatRole !== "sender") {
+                socket.once("ackFromHost", (ack) => {
+                    if (!ack) {
+                        setStatusWindow("");
+                        resetChatWindow();
+                        toast.info("Host did not acknowledge session!");
+                    }
+                    else {
+                        setStatusWindow("Received acknowledgment...starting session...");
+                    }
+                });
+            }
+
+            sessionStarted();
         }
         else {
             setStatusWindow("Securing session...");
@@ -179,6 +200,7 @@ function ChatSession() {
                                 setStatusWindow("Session compromised! QBER too high.");
                                 socket.emit("resetSocketStats");
                                 toast.error("Session compromised!");
+                                setStatusWindow("");
                                 resetChatWindow();
                             }
                             else {
@@ -191,89 +213,109 @@ function ChatSession() {
                     catch {
                         socket.emit("sessionDisturbed", chatRoomId, "Could not request for QBER!");
                         toast.error("Could not request for QBER!");
-                        resetChatWindow();
-                    }
-                    finally { 
                         setStatusWindow("");
+                        resetChatWindow();
                     }
                 });
             }
             else if (chatRole === "eavesdropper") {
-                socket.once("ackFromHost", async () => {
-                    try {
-                        const response = await qcCaller.get(`/distributeRawKey/${userId}`);
-                        qkeyBases.current = response.data.bases;
-                        qkeyBits.current = response.data.bits;
-        
-                        setStatusWindow("Intercepted bits and resent to receiver...");
-
-                        socket.once("qberResult", (receivedQber) => {
-                            if (receivedQber > 10) {
-                                toast.error("Detected by BB84 QKD algorithm!");
-                                resetChatWindow();
-                            }
-                            else {
-                                socket.emit("updateOnQBERAccept", chatRoomId);
-                                toast.success("Eavesdropping successfully!");
-                            }
-                        });
-                    }
-                    catch {
-                        toast.error("Unexpected error occurred!");
-                        resetChatWindow();
-                    }
-                    finally {
+                setStatusWindow("Waiting for acknowledgement of session from host...");
+                socket.once("ackFromHost", async (ack) => {
+                    if (!ack) {
                         setStatusWindow("");
+                        resetChatWindow();
+                        toast.info("Host did not acknowledge session!");
+                    }
+                    else {
+                        try {
+                            setStatusWindow("Received acknowledgment of session...intercepting key...");
+
+                            const response = await qcCaller.get(`/distributeRawKey/${userId}`);
+                            qkeyBases.current = response.data.bases;
+                            qkeyBits.current = response.data.bits;
+            
+                            setStatusWindow("Intercepted bits and resent to receiver...");
+
+                            socket.once("qberResult", (receivedQber) => {
+                                if (receivedQber > 10) {
+                                    toast.error("Detected by BB84 QKD algorithm!");
+                                    setStatusWindow("");
+                                    resetChatWindow();
+                                }
+                                else {
+                                    socket.emit("updateOnQBERAccept", chatRoomId);
+                                    toast.success("Eavesdropping successfully!");
+                                    sessionStarted();
+                                }
+                            });
+                        }
+                        catch {
+                            toast.error("Unexpected error occurred!");
+                            setStatusWindow("");
+                            resetChatWindow();
+                        }
                     }
                 });
             }
             else {
-                socket.once("ackFromHost", async () => {
-                    let tryLaterCount = 0;
-                    const intervalId = setInterval(async () => {
-                        try {
-                            const response = await qcCaller.get(`/distributeRawKey/${userId}`);
-                            clearInterval(intervalId);
+                setStatusWindow("Waiting for acknowledgement of session from host...");
 
-                            qkeyBases.current = response.data.bases;
-                            qkeyBits.current = response.data.bits;
+                socket.once("ackFromHost", async (ack) => {
+                    if (!ack) {
+                        setStatusWindow("");
+                        resetChatWindow();
+                        toast.info("Host did not acknowledge session!");
+                    }
+                    else {
+                        setStatusWindow("Received acknowledgement, generating key...This may take some time!");
 
-                            socket.emit("shareBases", chatRoomId, qkeyBases.current);
-                            setStatusWindow("Key generated! Sharing bases...");
+                        let tryLaterCount = 0;
+                        const intervalId = setInterval(async () => {
+                            try {
+                                const response = await qcCaller.get(`/distributeRawKey/${userId}`);
+                                clearInterval(intervalId);
+                                
+                                qkeyBases.current = response.data.bases;
+                                qkeyBits.current = response.data.bits;
 
-                            socket.once("bases", (bases) => {
-                                socket.once("qber", ({ randIndices, randBits }) => {
-                                    siftKey(bases);
+                                socket.emit("shareBases", chatRoomId, qkeyBases.current);
+                                setStatusWindow("Key generated! Sharing bases...");
 
-                                    const calcQber = qberCalculator(randIndices, randBits);
-                                    setStatusWindow(`Measured QBER is ${calcQber.toFixed(1)}%....`);
+                                socket.once("bases", (bases) => {
+                                    socket.once("qber", ({ randIndices, randBits }) => {
+                                        siftKey(bases);
 
-                                    socket.emit("shareQBERResult", chatRoomId, calcQber);
+                                        const calcQber = qberCalculator(randIndices, randBits);
+                                        setStatusWindow(`Measured QBER is ${calcQber.toFixed(1)}%....`);
 
-                                    if (calcQber < 10) {
-                                        setQBER(calcQber);
-                                        setStatusWindow("");
-                                        sessionStarted();
-                                    }
-                                    else {
-                                        setStatusWindow("Session compromised!");
-                                        socket.emit("leave");
-                                        toast.error("Session compromised!");
-                                        resetChatWindow();
-                                    }
+                                        socket.emit("shareQBERResult", chatRoomId, calcQber);
+
+                                        if (calcQber < 10) {
+                                            setQBER(calcQber);
+                                            sessionStarted();
+                                        }
+                                        else {
+                                            setStatusWindow("Session compromised!");
+                                            socket.emit("leave");
+                                            toast.error("Session compromised!");
+                                            setStatusWindow("");
+                                            resetChatWindow();
+                                        }
+                                    });
                                 });
-                            });
-                        }
-                        catch (error) {
-                            if (error.response?.status === 425 && tryLaterCount <= 3)
-                                tryLaterCount++;
-                            else {
-                                toast.error("Key generation failed!");
-                                socket.emit("sessionDisturbed", chatRoomId, "Key Generation Failed!");
-                                resetChatWindow();
                             }
-                        }
-                    }, 5000);
+                            catch (error) {
+                                if (error.response?.status === 425 && tryLaterCount <= 3)
+                                    tryLaterCount++;
+                                else {
+                                    toast.error("Key generation failed!");
+                                    socket.emit("sessionDisturbed", chatRoomId, "Key Generation Failed!");
+                                    setStatusWindow("");
+                                    resetChatWindow();
+                                }
+                            }
+                        }, 5000);
+                    }
                 });
             }
         }
@@ -290,13 +332,16 @@ function ChatSession() {
         });
 
         socket.on("sessionEnd", () => {
-            if (userId !== chatRoomId) socket.emit("leave");
+            if (userId !== chatRoomId)
+                socket.emit("leave");
+
             toast.info("Session ended gracefully");
             resetChatWindow();
         });
 
         socket.on("sessionDisturbed", (msg) => {
-            if (userId !== chatRoomId) socket.emit("leave");
+            if (userId !== chatRoomId)
+                socket.emit("leave");
             toast.error(msg);
             resetChatWindow();
         });

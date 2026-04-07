@@ -61,7 +61,6 @@ function NewRequest() {
                 setShowTimer(-1);
 
                 setWindowLoading("Handling response...");
-                console.log(response);
                 try {
                     if (response === "accepted") {
                         await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
@@ -74,7 +73,6 @@ function NewRequest() {
                         }
                         else {
                             socket.emit("updateOnResponseAccepted", userId);
-                            console.log("Done!");
                         }
                         socket.emit("joinAck", userId, true);
                         setWindowLoading("");

@@ -37,9 +37,12 @@ function RequestsToMe() {
         if (response) {
             socket.emit("accept", request.sender, request.typeOfEncryption);
             resetChatWindow();
+
             initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver", request.isSimulator);
+            
             setShowChatSession(true);
-        } else {
+        }
+        else {
             socket.emit("reject", request.sender);
             setRequestsToMe(requests => requests.filter(r => r.sender !== request.sender));
             setSubsetRequestsToMe(requests => requests.filter(r => r.sender !== request.sender));
