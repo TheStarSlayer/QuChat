@@ -153,7 +153,10 @@ function HomePage() {
                 if (newUser.username !== userId)
                     setOnlineUsers(prev => [newUser, ...prev])
             });
-            socket.on("userLeft", (uid) => setOnlineUsers(prev => prev.filter(u => u.username !== uid)));
+
+            socket.on("userLeft", (uid) => 
+                setOnlineUsers(prev => prev.filter(u => u.username !== uid))
+            );
             
             return () => {
                 socket.off("newUser");
@@ -170,8 +173,14 @@ function HomePage() {
 
             const socket = socketRef.current;
 
-            socket.on("requestToJoin", (request) => setRequestsToMe(prev => [request, ...prev]));
-            socket.on("removeRequest", (uid) => setRequestsToMe(prev => prev.filter(r => r.sender !== uid)));
+            socket.on("requestToJoin", (request) => {
+                toast.info(`New request from ${request.sender}`);
+                setRequestsToMe(prev => [request, ...prev])
+            });
+
+            socket.on("removeRequest", (uid) => {
+                setRequestsToMe(prev => prev.filter(r => r.sender !== uid))
+            });
 
             return () => {
                 socket.off("requestToJoin");
@@ -187,6 +196,7 @@ function HomePage() {
                 .catch(() => toast.error("Could not get eavesdroppable requests!"));
 
             const socket = socketRef.current;
+
             socket.on("requestForED", (request) => {
                 if (request.sender !== userId && request.receiver !== userId)
                     setEavesdroppableRequests(prev => [request, ...prev]);
