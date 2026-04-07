@@ -15,8 +15,8 @@ const socketInit = (io) => {
     io.on("connection", async socket => {
         await socketConnectEvent(socket);
 
-        socket.on("sendJoinRequest", async (receiverId, request) =>
-            await sendJoinRequestEvent(socket, receiverId, request));
+        socket.on("sendJoinRequest", async (request) =>
+            await sendJoinRequestEvent(socket, request));
 
         socket.on("eavesdropRequest", async roomId =>
             await eavesdropRequestEvent(socket, roomId));

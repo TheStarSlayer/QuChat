@@ -7,7 +7,7 @@ export const mongoConnect = () => {
     }
     catch (err) {
         console.error("Unexpected error occurred: Database could not be connected.");
-        console.error(err.message);
+        console.error(err);
     }
 };
 
@@ -23,13 +23,13 @@ export const redisConnect = async () => {
         });
         client.on('error', (err) => {
             console.error("Unexpected error occurred: Cache could not be connected.");
-            console.error(err.message);
+            console.error(err);
         });
         await client.connect();
         return client;
     }
     catch (err) {
         console.error("Unexpected error occurred: Cache could not be connected.");
-        console.error(err.message);
+        console.error(err);
     }
 };

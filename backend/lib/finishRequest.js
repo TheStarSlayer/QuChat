@@ -1,6 +1,5 @@
-import io from "../io.index.js";
 import RequestModel from "../models/requests.model.js";
-import { redisClient } from "../index.js";
+import { redisClient, io } from "../index.js";
 
 /**
  * finishStatus -> pending, accepted, cancelled
@@ -12,10 +11,12 @@ const finishRequest = async (userId, finishStatus) => {
         const updateFilter = { status: finishStatus };
 
         const request = await RequestModel.findOneAndUpdate(findFilter, updateFilter);
-        if (request === null)
+        if (request === null) {
+            console.log("Could not find request");
             return false;
+        }
 
-        const requestee = await redisClient.hGet(`requester:${userId}`, receiver);
+        const requestee = JSON.parse(await redisClient.get(`requester:${userId}`)).receiver;
         await redisClient.multi()
             .zRem('allRequestIndex', userId)
             .zRem('EDRequestIndex', userId)
@@ -24,10 +25,11 @@ const finishRequest = async (userId, finishStatus) => {
             .exec();
 
         io.emit("removeRequest", userId);
+        console.log("Finished");
         return true;
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
         return false;
     }
 }

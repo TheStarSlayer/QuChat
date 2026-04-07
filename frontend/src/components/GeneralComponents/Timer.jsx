@@ -5,10 +5,13 @@ function Timer({ time }) {
     const [remaining, setRemaining] = useState(time);
 
     useEffect(() => {
-        setRemaining(time);
+        (() => setRemaining(time))();
         const interval = setInterval(() => {
             setRemaining(prev => {
-                if (prev <= 1) { clearInterval(interval); return 0; }
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    return 0;
+                }
                 return prev - 1;
             });
         }, 1000);

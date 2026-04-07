@@ -32,11 +32,12 @@ export const socketConnectEvent = async (socket) => {
         });
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
     }
 };
 
 export const sendJoinRequestEvent = async (socket, request) => {
+    console.log(request);
     const isReceiverOnline = await checkIfOnline(request.receiver);
     if (!isReceiverOnline)
         return socket.emit("requestFailed", "User is not available for requests"); // call finishRequest(cancelled)
@@ -195,11 +196,16 @@ export const socketDisconnectEvent = async (socket) => {
             socket.to(socket.ackWaitSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
 
             if (socket.userId == socket.ackWaitSession) {
-                fetch(`http://localhost:8598/deleteMetadata/${socket.ackWaitSession}`, {
+                const res = fetch(`${process.env.QC_ADDR}/deleteMetadata/${socket.ackWaitSession}`, {
+                    method: "DELETE",
                     headers: {
                         "Authorization": `Bearer ${socket.handshake.auth.token}`
                     }
                 });
+
+                if (!res.ok) {
+                    console.error("Could not delete key gen metadata!");   
+                }
             }
         }
 
@@ -218,15 +224,18 @@ export const socketDisconnectEvent = async (socket) => {
 
                 await RequestModel.findOneAndUpdate(findFilter, updateFilter);
 
-                const createdOn = await redisClient.hGet(`requester:${senderId}`, "createdOn");
+                const updatedRequest = JSON.parse(await redisClient.get(`requester:${senderId}`));
+                updatedRequest.eavesdropper = false;
+                updatedRequest.eavesdropperId = null;
+                const createdOn = updatedRequest.createdOn;
+
                 await redisClient.multi()
-                    .hSet(`requester:${senderId}`, "eavesdropper", false)
-                    .hSet(`requester:${senderId}`, "eavesdropperId", null)
+                    .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
                     .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
                     .exec();
             }
             catch (err) {
-                console.error("Unexpected error occurred", err.message);
+                console.error(err);
             }
         }
 

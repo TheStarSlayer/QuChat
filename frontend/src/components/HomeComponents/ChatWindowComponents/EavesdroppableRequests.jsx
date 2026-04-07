@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
 
@@ -14,7 +14,6 @@ function EavesdroppableRequests() {
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
 
     function searcher(value) {
-        setSearchTermForEDR(value);
         if (value === "") {
             setSubsetEDRequests([...eavesdroppableRequests]);
         } else {
@@ -22,6 +21,11 @@ function EavesdroppableRequests() {
             setSubsetEDRequests(eavesdroppableRequests.filter(r => regex.test(r.sender)));
         }
     }
+
+    useEffect(() => {
+        (() => searcher(searchTermForEDR))();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eavesdroppableRequests]);
 
     async function eavesdropRequest(request) {
         setWindowLoading("Sneaking...");
@@ -74,7 +78,7 @@ function EavesdroppableRequests() {
                         <h2 className="text-xl font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#2196F3" }}>
                             Eavesdrop Request
                         </h2>
-                        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>Select an active quantum channel to monitor.</p>
+                        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>Select an active request to monitor.</p>
                     </div>
                     <button
                         onClick={resetChatWindow}
@@ -98,7 +102,7 @@ function EavesdroppableRequests() {
                         <input
                             type="text"
                             value={searchTermForEDR}
-                            onChange={e => searcher(e.target.value)}
+                            onChange={e => {setSearchTermForEDR(e.target.value); searcher(e.target.value);}}
                             placeholder="Filter by user..."
                             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-white text-sm outline-none transition-all"
                             style={{

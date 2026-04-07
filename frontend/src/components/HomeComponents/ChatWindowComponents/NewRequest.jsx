@@ -25,7 +25,9 @@ function NewRequest() {
 
     async function createRequest() {
         setWindowLoading("Sending request...");
+
         try {
+            setShowTimer(-1);
             const response = await apiCaller.post("/persistRequest", {
                 receiverId: showNewRequest,
                 timeLimitInMs: timeLimitInSec * 1000,
@@ -37,7 +39,7 @@ function NewRequest() {
             const request = response.data.newRequestPublic;
             const socket = socketRef.current;
 
-            socket.emit("sendJoinRequest", showNewRequest, request);
+            socket.emit("sendJoinRequest", request);
             setShowTimer(timeLimitInSec);
 
             const timeoutId = setTimeout(async () => {
@@ -47,7 +49,8 @@ function NewRequest() {
                 toast.info("Request timed out!");
                 try {
                     await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
-                } catch (error) {
+                }
+                catch {
                     toast.error("Could not close request successfully!");
                 }
             }, timeLimitInSec * 1000);
@@ -55,35 +58,50 @@ function NewRequest() {
             socket.once("response", async (response) => {
                 clearTimeout(timeoutId);
                 setShowTimer(-1);
+
                 setWindowLoading("Handling response...");
+                console.log(response);
                 try {
                     if (response === "accepted") {
-                        await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
+                        const _ = await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
+
                         if (typeOfEncryption === "bb84") {
                             socket.emit("updateOnResponseAcceptQC", userId);
                             const res = await qcCaller.get(`/distributeRawKey/${userId}`);
                             qkeyBases.current = res.data.bases;
                             qkeyBits.current = res.data.bits;
-                        } else {
+                        }
+                        else {
                             socket.emit("updateOnResponseAccepted", userId);
                         }
                         socket.emit("joinAck", userId, true);
                         resetChatWindow();
+
                         initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host", request.isSimulator);
+
                         setShowChatSession(true);
-                    } else {
-                        await apiCaller.patch("/finishRequest", { finishStatus: "rejected" });
+                    }
+                    else {
+                        const _ = await apiCaller.patch("/finishRequest", { finishStatus: "rejected" });
                         resetChatWindow();
                     }
-                } catch (error) {
+                }
+                catch {
                     toast.error("Could not handle request successfully!");
                     resetChatWindow();
-                    try { await apiCaller.patch("/finishRequest", { finishStatus: "timeout" }); } catch {}
+                    try {
+                        await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                    }
+                    catch {
+                        toast.error("Could not close the request!");
+                    }
                 }
             });
-        } catch (error) {
+        } 
+        catch {
             toast.error("Something unexpected happened!");
-        } finally {
+        }
+        finally {
             setWindowLoading("");
         }
     }
@@ -246,7 +264,7 @@ function NewRequest() {
                                         <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                                     </svg>
                                     <span style={{ fontSize: "11px", color: "rgba(216,121,0,0.9)", lineHeight: 1.4 }}>
-                                        A real quantum machine will take an indefinite time to get request in queue.
+                                        A real quantum machine may take a long time to generate a key.
                                     </span>
                                 </div>
                             )}

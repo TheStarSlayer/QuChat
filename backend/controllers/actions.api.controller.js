@@ -1,6 +1,5 @@
 import retrieveOnlineUsers from "../lib/retrieveOnlineUsers.js";
-import { redisClient } from "../index.js";
-import io from "../io.index.js";
+import { redisClient, io } from "../index.js";
 import { OnlineUsers } from "../models/user.model.js";
 
 export const verifyAccessTokenController = (req, res) => {
