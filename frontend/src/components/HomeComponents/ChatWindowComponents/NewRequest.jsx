@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
 import Timer from "../../GeneralComponents/Timer";
@@ -59,6 +59,7 @@ function NewRequest() {
 
             socket.once("response", async (response) => {
                 clearTimeout(timeoutId.current);
+                timeoutId.current = null;
                 setShowTimer(-1);
 
                 setWindowLoading("Handling response...");
@@ -101,6 +102,34 @@ function NewRequest() {
             toast.error("Something unexpected happened!");
         }
     }
+
+    useEffect(() => {
+        return () => {
+            async function closeFunction() {
+                if (timeoutId.current !== null) {
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
+                    const socket = socketRef.current;
+                    
+                    clearTimeout(timeoutId);
+                    timeoutId.current = null;
+
+                    setShowTimer(-1);
+                    socket.off("response");
+                    resetChatWindow();
+                    toast.info("Request timed out!");
+                    try {
+                        await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                    }
+                    catch {
+                        toast.error("Could not close request successfully!");
+                    }
+                }
+            }
+
+            closeFunction();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="flex-1 flex flex-col items-center overflow-y-auto relative"
