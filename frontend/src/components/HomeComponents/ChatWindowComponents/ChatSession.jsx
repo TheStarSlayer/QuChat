@@ -296,7 +296,7 @@ function ChatSession() {
                                         }
                                         else {
                                             setStatusWindow("Session compromised!");
-                                            socket.emit("leave");
+                                            socket.emit("leave", chatRoomId);
                                             toast.error("Session compromised!");
                                             setStatusWindow("");
                                             resetChatWindow();
@@ -333,7 +333,7 @@ function ChatSession() {
 
         socket.on("sessionEnd", () => {
             if (userId !== chatRoomId)
-                socket.emit("leave");
+                socket.emit("leave", chatRoomId);
 
             toast.info("Session ended gracefully");
             resetChatWindow();
@@ -341,7 +341,7 @@ function ChatSession() {
 
         socket.on("sessionDisturbed", (msg) => {
             if (userId !== chatRoomId)
-                socket.emit("leave");
+                socket.emit("leave", chatRoomId);
             toast.error(msg);
             resetChatWindow();
         });
