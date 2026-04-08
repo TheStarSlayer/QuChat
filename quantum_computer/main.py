@@ -8,7 +8,7 @@ from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2 as Sampler
 
 from qiskit_aer import AerSimulator
 from qiskit_aer.primitives import SamplerV2 as AerSampler
-from qiskit_ibm_runtime.fake_provider import FakeMarrakesh
+from qiskit.primitives import BackendSamplerV2
 
 from qiskit.transpiler import generate_preset_pass_manager
 from qiskit import QuantumCircuit
@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 import math
 
 import pymongo
+from pymongo import ReturnDocument
 
 load_dotenv()
 
@@ -93,19 +94,16 @@ async def random_num_generator(
     qc.measure_all()
     
     if (typeOfMachine == "sim"):
-        q_backend = AerSimulator.from_backend(FakeMarrakesh())
+        q_backend = AerSimulator()
+        sampler = BackendSamplerV2(backend=q_backend)
+        isa_circuit = qc
     else:
         q_backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
-    
-    pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
-    isa_circuit = pm.run(qc)
-
-    if (typeOfMachine == 'sim'):
-        sampler = AerSampler()
-        job = sampler.run([isa_circuit], shots=no_of_shots)
-    else:
+        pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
         sampler = Sampler(q_backend)
-        job = sampler.run([isa_circuit], shots=no_of_shots)
+        isa_circuit = pm.run(qc)
+        
+    job = sampler.run([isa_circuit], shots=no_of_shots)
     
     result = job.result()
     counts = result[0].data.meas.get_counts()
@@ -126,12 +124,12 @@ async def random_indices_generator(
 
     min_length = math.floor(0.1 * keyLength)
     def_length = math.floor(0.15 * keyLength)
-    index_range = findNoOfBits(keyLength)
+    no_of_bits = max(1, math.ceil(math.log2(keyLength)))
     
-    observed_indices = await random_indices_gen_helper(keyLength, typeOfMachine, def_length, index_range)
+    observed_indices = await random_indices_gen_helper(keyLength, typeOfMachine, def_length, no_of_bits)
         
     while len(observed_indices) < min_length:
-        new_indices = await random_indices_gen_helper(keyLength, typeOfMachine, min_length, index_range)
+        new_indices = await random_indices_gen_helper(keyLength, typeOfMachine, min_length, no_of_bits)
         observed_indices.update(new_indices)
     
     observed_indices_list = list(observed_indices)
@@ -145,32 +143,26 @@ async def random_indices_generator(
 async def random_indices_gen_helper(
     keyLength: int,
     typeOfMachine: Literal["sim", "hw"],
-    def_length: int,
-    index_range: int
+    no_of_indices: int,
+    no_of_bits: int
 ):    
     observed_indices = set()
-    indices_bitstring = await random_num_generator(typeOfMachine, str(index_range), str(def_length))
+    indices_bitstring = await random_num_generator(typeOfMachine, str(no_of_bits), str(no_of_indices))
     
     for bitstring in indices_bitstring:
         index = 0
-        for i in range(0, index_range):
+        for i in range(0, no_of_bits):
             if (bitstring[i] == "1"):
-                index += powers_of_two[index_range-1-i]
+                index += powers_of_two[no_of_bits-1-i]
         if index < keyLength:
             observed_indices.add(index)
 
     return observed_indices
 
-def findNoOfBits(keyLength):
-    for i in range(len(powers_of_two)):
-        if powers_of_two[i] <= keyLength:
-            return 9 - i
-    return 0
-
 @app.get("/distributeRawKey/{roomId}")
 async def distribute_raw_key(
     request: Request,
-    roomId: str,
+    roomId: str
 ):
     requests = database["requestmodels"]
     
@@ -190,8 +182,6 @@ async def distribute_raw_key(
         sort=[("createdOn", -1)]
     )
     
-    print(roomRequest)
-    
     if not roomRequest:
         return JSONResponse(
             status_code=404,
@@ -208,7 +198,7 @@ async def distribute_raw_key(
             circuit_metadata.delete_one({ "roomId": roomId })
             
         circuit_metadata_dict = {
-            "roomId": userId,
+            "roomId": roomId,
             "senderBases": None,
             "senderBits": None,
             "generatingMetadata": True
@@ -237,14 +227,14 @@ async def distribute_raw_key(
         metadata_select_filter = {
             "senderBases": 1, "senderBits": 1, "_id": 0
         }
-        
+
         metadata = circuit_metadata.find_one_and_update(
             metadata_find_filter, 
             {
                 "$set": { "generatingMetadata": True }
             },
             projection=metadata_select_filter,
-            return_document=True
+            return_document=ReturnDocument.BEFORE
         )
 
         if metadata is None:
@@ -256,9 +246,9 @@ async def distribute_raw_key(
         bases = (await random_num_generator(typeOfMachine=typeOfMachine))[0]
         
         observed_bits = await generateAndRunBB84Circuit(
-            sender_bits=metadata["senderBits"],
-            sender_bases=metadata["senderBases"],
-            receiver_bases=bases,
+            sender_bit_str=metadata["senderBits"],
+            sender_bases_str=metadata["senderBases"],
+            receiver_bases_str=bases,
             typeOfMachine=typeOfMachine,
             bit_length=156
         )
@@ -286,9 +276,9 @@ async def distribute_raw_key(
 
 @app.get("/generateAndRunBB84Circuit")
 async def generateAndRunBB84Circuit(
-    sender_bits: str,
-    sender_bases: str,
-    receiver_bases: str,
+    sender_bit_str: str,
+    sender_bases_str: str,
+    receiver_bases_str: str,
     typeOfMachine: Literal["sim", "hw"],
     bit_length: int = 156,
 ) -> str | None:
@@ -301,39 +291,47 @@ async def generateAndRunBB84Circuit(
         Bits: 0 -> |+>
               1 -> |->
     """
-    qc = QuantumCircuit(bit_length)
+    qc = QuantumCircuit(bit_length, bit_length)
+    
+    sender_bits = [int(i) for i in sender_bit_str]
+    sender_bases = [int(i) for i in sender_bases_str]
+    receiver_bases = [int(i) for i in receiver_bases_str]
     
     for i in range(bit_length):
-        if sender_bases[i] == '1':
-            qc.h(i)
+        if sender_bits[i] == 0:
+            if sender_bases[i] == 1:
+                qc.h(i)
+        if sender_bits[i] == 1:
+            if sender_bases[i] == 0:
+                qc.x(i)
+            if sender_bases[i] == 1:
+                qc.x(i)
+                qc.h(i)
         
-        if sender_bits[i] == '1':
-            qc.x(i)
-            
-        if receiver_bases[i] == '1':
+    for i in range(bit_length):
+        if receiver_bases[i] == 1:
             qc.h(i)
-            
-    qc.measure_all()
+        qc.measure(i, i)
     
     if (typeOfMachine == "sim"):
-        q_backend = AerSimulator.from_backend(FakeMarrakesh())
+        backend = AerSimulator()
+        sampler = BackendSamplerV2(backend=backend)
+        isa_circuit = qc
     else:
-        q_backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
-    
-    pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
-    isa_circuit = pm.run(qc)
+        backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
+        sampler = Sampler(backend)
+        pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+        isa_circuit = pm.run(qc)
 
-    if (typeOfMachine == 'sim'):
-        sampler = AerSampler()
-        job = sampler.run([isa_circuit], shots=1)
-    else:
-        sampler = Sampler(q_backend)
-        job = sampler.run([isa_circuit], shots=1)
-    
+    job = sampler.run([isa_circuit], shots=1)
     result = job.result()
-    counts = result[0].data.meas.get_counts()
+    counts = result[0].data.c.get_counts()
     
-    return list(counts.keys())[0]
+    key = list(counts.keys())[0]
+    meas = list(key)
+    observed_bits = ''.join(meas)
+        
+    return observed_bits[::-1]
 
 @app.delete("/deleteMetadata/{roomId}")
 async def deleteMetadata(

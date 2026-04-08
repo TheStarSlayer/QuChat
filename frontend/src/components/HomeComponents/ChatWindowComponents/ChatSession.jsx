@@ -65,20 +65,17 @@ function ChatSession() {
 
     function siftKey(receivedBases) {
         const myBases = qkeyBases.current;
-        const indicesToDelete = [];
+        const myBits = qkeyBits.current;
+
+        let newKey = "";
 
         for (let i = 0; i < myBases.length; i++) {
-            if (receivedBases[i] !== myBases[i])
-                indicesToDelete.push(i);
+            if (receivedBases[i] === myBases[i]) {
+                newKey += myBits[i];
+            }
         }
 
-        let myKey = qkeyBits.current;
-        for (let i = indicesToDelete.length - 1; i >= 0; i--) {
-            myKey = myKey.slice(0, indicesToDelete[i]) + myKey.slice(indicesToDelete[i] + 1);
-        }
-
-        siftedQkeyBits.current = myKey;
-        console.log("sifted key", siftedQkeyBits.current);
+        siftedQkeyBits.current = newKey;
     }
 
     function getRandBits(randIndices) {
@@ -88,26 +85,24 @@ function ChatSession() {
         for (const ind of randIndices)
             randBits += myKey[ind];
 
-        for (let i = randIndices.length - 1; i >= 0; i--) {
+        for (let i = randIndices.length - 1; i >= 0; i--)
             myKey = myKey.slice(0, randIndices[i]) + myKey.slice(randIndices[i] + 1);
-        }
 
         siftedQkeyBits.current = myKey;
-        console.log("random bits", randBits);
-        console.log("sifted key", myKey);
+
+
         return randBits;
     }
 
-    function qberCalculator(randIndices, randBits) {
-        const myRandBits = getRandBits(randIndices);
+    function qberCalculator(hostRandBits, myRandBits) {
         let mismatched = 0;
 
-        for (let i = 0; i < randBits.length; i++) {
-            if (myRandBits[i] !== randBits[i])
+        for (let i = 0; i < hostRandBits.length; i++) {
+            if (myRandBits[i] !== hostRandBits[i])
                 mismatched++;
         }
 
-        return (mismatched / randBits.length) * 100;
+        return (mismatched / hostRandBits.length) * 100;
     }
 
     function sessionStarted() {
@@ -203,8 +198,7 @@ function ChatSession() {
                 .then((res) => {
                     qkeyBases.current = res.data.bases;
                     qkeyBits.current = res.data.bits;          
-                    console.log(`Bits and bases: ${qkeyBits.current} & ${qkeyBases.current}`);
-                    
+
                     socket.emit("joinAck", userId, true);
                     setToBusy();
 
@@ -272,7 +266,7 @@ function ChatSession() {
                             const response = await qcCaller.get(`/distributeRawKey/${chatRoomId}`);
                             qkeyBases.current = response.data.bases;
                             qkeyBits.current = response.data.bits;
-            
+
                             setStatusWindow("Intercepted bits and resent to receiver...");
 
                             socket.once("qberResult", (receivedQber) => {
@@ -316,7 +310,6 @@ function ChatSession() {
                         intervalId.current = setInterval(async () => {
                             if (isRequestInProgress.current)
                                 return;
-
                             isRequestInProgress.current = true;
 
                             try {
@@ -325,7 +318,6 @@ function ChatSession() {
                                 
                                 qkeyBases.current = response.data.bases;
                                 qkeyBits.current = response.data.bits;
-                                console.log(`Bits and bases: ${qkeyBits.current} & ${qkeyBases.current}`);
 
                                 socket.emit("shareBases", chatRoomId, qkeyBases.current);
                                 setStatusWindow("Key generated! Sharing bases...");
@@ -334,7 +326,9 @@ function ChatSession() {
                                     socket.once("qber", ({ randIndices, randBits }) => {
                                         siftKey(bases);
 
-                                        const calcQber = qberCalculator(randIndices, randBits);
+                                        const myRandBits = getRandBits(randIndices);
+                                        const calcQber = qberCalculator(randBits, myRandBits);
+
                                         toast.info(`QBER value: ${calcQber}`);
 
                                         setStatusWindow(`Measured QBER is ${calcQber.toFixed(1)}%....`);
