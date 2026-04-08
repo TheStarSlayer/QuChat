@@ -29,10 +29,11 @@ function ChatSession() {
     const tryAgainLater = useRef(0);
     const isRequestInProgress = useRef(false);
     const messagesEndRef = useRef(null);
+    const isSetToBusy = useRef(false);
 
     const quantumKey = useRef(null);
 
-    const QBERThreshold = chatUsesSimulator ? 10 : 0;
+    const QBERThreshold = chatUsesSimulator ? 0 : 10;
 
     // Auto scroll to bottom
     useEffect(() => {
@@ -159,6 +160,7 @@ function ChatSession() {
 
     async function setToBusy() {
         await apiCaller.patch("/setToBusy");
+        isSetToBusy.current = true;
         toast.info("You cannot receive requests for now!");
     }
 
@@ -206,7 +208,7 @@ function ChatSession() {
                 .then((res) => {
                     qkeyBases.current = res.data.bases;
                     qkeyBits.current = res.data.bits;          
-
+                    setStatusWindow("Bits and bases generated successfully!")
                     socket.emit("joinAck", userId, true);
                     setToBusy();
 
@@ -229,7 +231,7 @@ function ChatSession() {
                             socket.once("qberResult", (receivedQber) => {
                                 toast.info(`QBER value: ${receivedQber}`);
                                 
-                                if (receivedQber < QBERThreshold && receivedQber !== null) {
+                                if (receivedQber <= QBERThreshold && receivedQber !== null) {
                                     socket.emit("updateOnQBERAccept", chatRoomId);
                                     setQBER(receivedQber);
                                     sessionStarted();
@@ -356,7 +358,7 @@ function ChatSession() {
 
                                         socket.emit("shareQBERResult", chatRoomId, calcQber);
 
-                                        if (calcQber < QBERThreshold) {
+                                        if (calcQber <= QBERThreshold) {
                                             setQBER(calcQber);
                                             sessionStarted();
                                         }
@@ -392,9 +394,22 @@ function ChatSession() {
 
         socket.on("message", ({ message: msg, sender, profilePic: senderPic }) => {
             let receivedMessage = msg;
-            if (chatEncryption !== "none") 
+            if (chatEncryption !== "none") {
                 receivedMessage = decrypt(msg, quantumKey.current);
 
+                if (!receivedMessage.trim()) {
+                    if (userId !== chatRoomId)
+                        socket.emit("leave", chatRoomId);
+
+                    socket.emit("sessionDisturbed", chatRoomId, "sample_error");
+
+                    toast.error("Generated keys are not the same!");
+                    toast.error("This means that sampling missed mismatched bits.");
+                    toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
+                    resetChatWindow();
+                    return;
+                } 
+            }
             setChatMessages(prev => 
                 [...prev, { message: receivedMessage, sender, senderProfilePic: senderPic, isMe: false }]
             );
@@ -428,6 +443,13 @@ function ChatSession() {
             if (userId !== chatRoomId)
                 socket.emit("leave", chatRoomId);
 
+            if (msg === "sample_error") {
+                toast.error("Generated keys are not the same!");
+                toast.error("This means that sampling missed mismatched bits.");
+                toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
+                return;
+            }
+
             toast.error(msg);
             resetChatWindow();
         });
@@ -439,8 +461,11 @@ function ChatSession() {
             socket.off("keyGenFailed");
             socket.off("requestFailed");
             (async () => {
-                await apiCaller.patch("/setToAvailable");
-                toast.info("You are now available for requests!");
+                if (isSetToBusy.current) {
+                    await apiCaller.patch("/setToAvailable");
+                    toast.info("You are now available for requests!");
+                    isSetToBusy.current = false;
+                }
             })();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
