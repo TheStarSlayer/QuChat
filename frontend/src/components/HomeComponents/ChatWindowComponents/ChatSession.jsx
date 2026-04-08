@@ -32,6 +32,8 @@ function ChatSession() {
 
     const quantumKey = useRef(null);
 
+    const QBERThreshold = chatUsesSimulator ? 10 : 0;
+
     // Auto scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -167,6 +169,7 @@ function ChatSession() {
         }
     };
 
+    // Session securing useEffect
     useEffect(() => {
         const socket = socketRef.current;
 
@@ -226,7 +229,7 @@ function ChatSession() {
                             socket.once("qberResult", (receivedQber) => {
                                 toast.info(`QBER value: ${receivedQber}`);
                                 
-                                if (receivedQber < 10 && receivedQber !== null) {
+                                if (receivedQber < QBERThreshold && receivedQber !== null) {
                                     socket.emit("updateOnQBERAccept", chatRoomId);
                                     setQBER(receivedQber);
                                     sessionStarted();
@@ -275,7 +278,7 @@ function ChatSession() {
                             setStatusWindow("Intercepted bits and resent to receiver...");
 
                             socket.once("qberResult", (receivedQber) => {
-                                if (receivedQber > 10) {
+                                if (receivedQber > QBERThreshold) {
                                     toast.error("Detected by BB84 QKD algorithm!");
                                     setStatusWindow("");
                                     resetChatWindow();
@@ -340,7 +343,7 @@ function ChatSession() {
 
                                         socket.emit("shareQBERResult", chatRoomId, calcQber);
 
-                                        if (calcQber < 10) {
+                                        if (calcQber < QBERThreshold) {
                                             setQBER(calcQber);
                                             sessionStarted();
                                         }
@@ -465,7 +468,7 @@ function ChatSession() {
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full mx-3"
                         style={{ background: "rgba(33,150,243,0.1)", border: "1px solid rgba(33,150,243,0.2)" }}>
                         <span className="w-2 h-2 rounded-full" style={{ background: "#2196F3" }} />
-                        <span style={{ fontSize: "10px", color: "#2196F3", letterSpacing: "1px" }}>
+                        <span style={{ fontSize: "12px", color: "#2196F3", letterSpacing: "1px" }}>
                             QBER {QBER.toFixed(1)}%
                         </span>
                     </div>
