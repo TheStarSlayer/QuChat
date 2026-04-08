@@ -78,7 +78,7 @@ Clients must attach the access token in the socket handshake: `io('http://localh
 
 - `onlineUsers` (sorted set) — online usernames (score = loggedAt)
 - `allRequestIndex`, `EDRequestIndex` (sorted sets) — indices for active requests
-- `requester:{senderId}` (hash) — request details stored per sender
+- `requester:{senderId}` (set) — request details stored per sender
 - `requestee:{receiverId}` (sorted set) — who has requested this receiver
 
 ## Quantum / QKD service endpoints
