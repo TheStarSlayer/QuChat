@@ -1,6 +1,6 @@
 # QuChat
 
-Private chat application that combines WebSockets and a BB84-inspired quantum key distribution (QKD) service.
+Privacy-first, session-based chat application that combines WebSockets and a BB84-inspired quantum key distribution (QKD) service.
 
 This repository contains three main parts:
 
