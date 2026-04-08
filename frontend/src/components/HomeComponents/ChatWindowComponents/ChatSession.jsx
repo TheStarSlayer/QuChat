@@ -13,7 +13,6 @@ function ChatSession() {
         socketRef, userId, profilePic,
         statusWindow, setStatusWindow,
         resetChatWindow,
-        qkeyBases, qkeyBits
     } = useContext(HomeContext);
 
     const [freeToChat, setFreeToChat] = useState(false);
@@ -22,6 +21,13 @@ function ChatSession() {
     const [chatMessages, setChatMessages] = useState([]);
     const [message, setMessage] = useState("");
     const [timeLeft, setTimeLeft] = useState(chatSessionTimer * 60);
+
+    const qkeyBases = useRef("");
+    const qkeyBits = useRef("");
+
+    const intervalId = useRef(null);
+    const tryAgainLater = useRef(0);
+    const isRequestInProgress = useRef(false);
     const messagesEndRef = useRef(null);
 
     // Auto scroll to bottom
@@ -70,7 +76,9 @@ function ChatSession() {
         for (let i = indicesToDelete.length - 1; i >= 0; i--) {
             myKey = myKey.slice(0, indicesToDelete[i]) + myKey.slice(indicesToDelete[i] + 1);
         }
+
         siftedQkeyBits.current = myKey;
+        console.log("sifted key", siftedQkeyBits.current);
     }
 
     function getRandBits(randIndices) {
@@ -85,6 +93,8 @@ function ChatSession() {
         }
 
         siftedQkeyBits.current = myKey;
+        console.log("random bits", randBits);
+        console.log("sifted key", myKey);
         return randBits;
     }
 
@@ -131,7 +141,9 @@ function ChatSession() {
         
         if (chatRole !== "eavesdropper")
             socket.emit("sessionDisturbed", chatRoomId, "Participant left");
-
+        else
+            socket.emit("leave", chatRoomId);
+        
         resetChatWindow();
         toast.success("Left chat session!");
     }
@@ -143,24 +155,31 @@ function ChatSession() {
         toast.success("Chat session ended successfully!");
     }
 
-    const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+    async function setToBusy() {
+        await apiCaller.patch("/setToBusy");
+        toast.info("You cannot receive requests for now!");
+    }
+
+    const handleKey = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
 
     useEffect(() => {
         const socket = socketRef.current;
 
-        (async () => {
-            await apiCaller.patch("/setToBusy");
-            toast.info("You cannot receive requests for now!");
-        })();
-
-        console.log(chatEncryption);
-        console.log(chatRole);
-
         if (chatEncryption === "none") {
-            setStatusWindow("Waiting for acknowledgement of session from host...");
+            setToBusy();
 
-            if (chatRole !== "sender") {
+            if (chatRole === "host") {
+                setStatusWindow("Starting session!");
+                socket.emit("joinAck", userId, true);
+            }
+            else {
                 socket.once("ackFromHost", (ack) => {
+                    setStatusWindow("Waiting for acknowledgement of session from host...");
                     if (!ack) {
                         setStatusWindow("");
                         resetChatWindow();
@@ -177,50 +196,70 @@ function ChatSession() {
         else {
             setStatusWindow("Securing session...");
 
-            if (chatRole === "sender") {
-                socket.once("bases", async (bases) => {
-                    socket.emit("shareBases", chatRoomId, qkeyBases.current);
+            if (chatRole === "host") {
+                setStatusWindow("Generating bits and bases...");
+
+                qcCaller.get(`/distributeRawKey/${userId}`)
+                .then((res) => {
+                    qkeyBases.current = res.data.bases;
+                    qkeyBits.current = res.data.bits;          
+                    console.log(`Bits and bases: ${qkeyBits.current} & ${qkeyBases.current}`);
                     
-                    siftKey(bases);
-                    setStatusWindow("Sharing bases for sifting key...");
+                    socket.emit("joinAck", userId, true);
+                    setToBusy();
 
-                    try {
-                        const response = await qcCaller.get(
-                            `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}?keyLength=${siftedQkeyBits.current.length}`
-                        );
+                    socket.once("bases", async (bases) => {                        
+                        siftKey(bases);
+                        setStatusWindow("Sharing bases for sifting key...");
+                        socket.emit("shareBases", chatRoomId, qkeyBases.current);
 
-                        const randIndices = response.data.randIndices;
-                        const randBits = getRandBits(randIndices);
-                        setStatusWindow("Key generated! Requesting for QBER...");
+                        try {
+                            const response = await qcCaller.get(
+                                `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}?keyLength=${siftedQkeyBits.current.length}`
+                            );
 
-                        socket.emit("calculateQBER", chatRoomId, { randIndices, randBits });
+                            const randIndices = response.data.randIndices;
+                            const randBits = getRandBits(randIndices);
+                            setStatusWindow("Key generated! Requesting for QBER...");
 
-                        socket.once("qberResult", (receivedQber) => {
-                            if (receivedQber > 10) {
-                                setStatusWindow("Session compromised! QBER too high.");
-                                socket.emit("resetSocketStats");
-                                toast.error("Session compromised!");
-                                setStatusWindow("");
-                                resetChatWindow();
-                            }
-                            else {
-                                socket.emit("updateOnQBERAccept", chatRoomId);
-                                setQBER(receivedQber);
-                                sessionStarted();
-                            }
-                        });
-                    }
-                    catch {
-                        socket.emit("sessionDisturbed", chatRoomId, "Could not request for QBER!");
-                        toast.error("Could not request for QBER!");
-                        setStatusWindow("");
-                        resetChatWindow();
-                    }
+                            socket.emit("calculateQBER", chatRoomId, { randIndices, randBits });
+
+                            socket.once("qberResult", (receivedQber) => {
+                                toast.info(`QBER value: ${receivedQber}`);
+                                
+                                if (receivedQber < 10 && receivedQber !== null) {
+                                    socket.emit("updateOnQBERAccept", chatRoomId);
+                                    setQBER(receivedQber);
+                                    sessionStarted();
+                                }
+                                else {
+                                    setStatusWindow("Session compromised! QBER too high.");
+                                    socket.emit("resetSocketStats");
+                                    toast.error("Session compromised!");
+                                    setStatusWindow("");
+                                    resetChatWindow();
+                                }
+                            });
+                        }
+                        catch {
+                            socket.emit("sessionDisturbed", chatRoomId, "Could not request for QBER!");
+                            toast.error("Could not request for QBER!");
+                            setStatusWindow("");
+                            resetChatWindow();
+                        }
+                    });
+                })
+                .catch(() => {
+                    socket.emit("joinAck", userId, false);
+                    toast.error("Key generation failed!");
+                    setStatusWindow("");
+                    resetChatWindow();
                 });
             }
             else if (chatRole === "eavesdropper") {
                 setStatusWindow("Waiting for acknowledgement of session from host...");
                 socket.once("ackFromHost", async (ack) => {
+                    setToBusy();
                     if (!ack) {
                         setStatusWindow("");
                         resetChatWindow();
@@ -230,7 +269,7 @@ function ChatSession() {
                         try {
                             setStatusWindow("Received acknowledgment of session...intercepting key...");
 
-                            const response = await qcCaller.get(`/distributeRawKey/${userId}`);
+                            const response = await qcCaller.get(`/distributeRawKey/${chatRoomId}`);
                             qkeyBases.current = response.data.bases;
                             qkeyBits.current = response.data.bits;
             
@@ -250,6 +289,7 @@ function ChatSession() {
                             });
                         }
                         catch {
+                            socket.emit("leave", chatRoomId);
                             toast.error("Unexpected error occurred!");
                             setStatusWindow("");
                             resetChatWindow();
@@ -261,6 +301,7 @@ function ChatSession() {
                 setStatusWindow("Waiting for acknowledgement of session from host...");
 
                 socket.once("ackFromHost", async (ack) => {
+                    setToBusy();
                     if (!ack) {
                         setStatusWindow("");
                         resetChatWindow();
@@ -269,14 +310,22 @@ function ChatSession() {
                     else {
                         setStatusWindow("Received acknowledgement, generating key...This may take some time!");
 
-                        let tryLaterCount = 0;
-                        const intervalId = setInterval(async () => {
+                        tryAgainLater.current = 0;
+                        isRequestInProgress.current = false;
+
+                        intervalId.current = setInterval(async () => {
+                            if (isRequestInProgress.current)
+                                return;
+
+                            isRequestInProgress.current = true;
+
                             try {
-                                const response = await qcCaller.get(`/distributeRawKey/${userId}`);
-                                clearInterval(intervalId);
+                                const response = await qcCaller.get(`/distributeRawKey/${chatRoomId}`);
+                                clearInterval(intervalId.current);
                                 
                                 qkeyBases.current = response.data.bases;
                                 qkeyBits.current = response.data.bits;
+                                console.log(`Bits and bases: ${qkeyBits.current} & ${qkeyBases.current}`);
 
                                 socket.emit("shareBases", chatRoomId, qkeyBases.current);
                                 setStatusWindow("Key generated! Sharing bases...");
@@ -286,6 +335,8 @@ function ChatSession() {
                                         siftKey(bases);
 
                                         const calcQber = qberCalculator(randIndices, randBits);
+                                        toast.info(`QBER value: ${calcQber}`);
+
                                         setStatusWindow(`Measured QBER is ${calcQber.toFixed(1)}%....`);
 
                                         socket.emit("shareQBERResult", chatRoomId, calcQber);
@@ -305,16 +356,20 @@ function ChatSession() {
                                 });
                             }
                             catch (error) {
-                                if (error.response?.status === 425 && tryLaterCount <= 3)
-                                    tryLaterCount++;
+                                if (error.response?.status === 425 && tryAgainLater.current <= 3)
+                                    tryAgainLater.current++;
                                 else {
+                                    clearInterval(intervalId.current);
                                     toast.error("Key generation failed!");
                                     socket.emit("sessionDisturbed", chatRoomId, "Key Generation Failed!");
                                     setStatusWindow("");
                                     resetChatWindow();
                                 }
                             }
-                        }, 5000);
+                            finally {
+                                isRequestInProgress.current = false;
+                            }
+                        }, 7000);
                     }
                 });
             }
@@ -331,6 +386,22 @@ function ChatSession() {
             );
         });
 
+        socket.on("keyGenFailed", (msg) => {
+            if (userId !== chatRoomId)
+                socket.emit("leave", chatRoomId);
+
+            toast.error(msg);
+            resetChatWindow();
+        });
+
+        socket.on("requestFailed", (msg) => {
+            if (userId !== chatRoomId)
+                socket.emit("leave", chatRoomId);
+
+            toast.error(msg);
+            resetChatWindow();
+        });
+
         socket.on("sessionEnd", () => {
             if (userId !== chatRoomId)
                 socket.emit("leave", chatRoomId);
@@ -342,6 +413,7 @@ function ChatSession() {
         socket.on("sessionDisturbed", (msg) => {
             if (userId !== chatRoomId)
                 socket.emit("leave", chatRoomId);
+
             toast.error(msg);
             resetChatWindow();
         });
@@ -350,6 +422,8 @@ function ChatSession() {
             socket.off("message");
             socket.off("sessionEnd");
             socket.off("sessionDisturbed");
+            socket.off("keyGenFailed");
+            socket.off("requestFailed");
             (async () => {
                 await apiCaller.patch("/setToAvailable");
                 toast.info("You are now available for requests!");

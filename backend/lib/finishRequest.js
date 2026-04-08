@@ -25,7 +25,6 @@ const finishRequest = async (userId, finishStatus) => {
             .exec();
 
         io.emit("removeRequest", userId);
-        console.log("Finished");
         return true;
     }
     catch (err) {

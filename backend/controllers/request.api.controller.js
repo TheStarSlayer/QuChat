@@ -192,7 +192,6 @@ export const eavesdropController = async (req, res) => {
 export const finishRequestController = async (req, res) => {
     const userId = req.userId;
     const finishStatus = req.body.finishStatus;
-    console.log(finishStatus);
     const result = await finishRequest(userId, finishStatus);
     if (result)
         return res.sendStatus(204);

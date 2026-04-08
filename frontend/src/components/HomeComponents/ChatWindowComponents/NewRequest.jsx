@@ -1,8 +1,7 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
-import qcCaller from "../../../lib/qc";
 import Timer from "../../GeneralComponents/Timer";
 
 function NewRequest() {
@@ -11,14 +10,15 @@ function NewRequest() {
         socketRef, setShowTimer, showTimer,
         setShowChatSession,
         userId, resetChatWindow,
-        initChatSession,
-        qkeyBits, qkeyBases
+        initChatSession
     } = useContext(HomeContext);
 
     const [timeLimitInSec, setTimeLimitInSec] = useState(30);
     const [chatSessionTimeInMin, setChatSessionTimeInMin] = useState(5);
     const [typeOfEncryption, setTypeOfEncryption] = useState("bb84");
     const [isSimulator, setIsSimulator] = useState(true);
+
+    const timeoutId = useRef(null);
 
     const timeSteps = [30, 45, 60, 75, 90];
     const timeIndex = timeSteps.indexOf(timeLimitInSec);
@@ -28,13 +28,14 @@ function NewRequest() {
 
         try {
             setShowTimer(-1);
-            const response = await apiCaller.post("/persistRequest", {
+            const reqBody = {
                 receiverId: showNewRequest,
                 timeLimitInMs: timeLimitInSec * 1000,
                 typeOfEncryption,
                 chatSessionTimeInMin,
                 isSimulator
-            });
+            };
+            const response = await apiCaller.post("/persistRequest", reqBody);
 
             const request = response.data.newRequestPublic;
             const socket = socketRef.current;
@@ -43,7 +44,7 @@ function NewRequest() {
             setShowTimer(timeLimitInSec);
             setWindowLoading("");
 
-            const timeoutId = setTimeout(async () => {
+            timeoutId.current = setTimeout(async () => {
                 setShowTimer(-1);
                 socket.off("response");
                 resetChatWindow();
@@ -57,7 +58,7 @@ function NewRequest() {
             }, timeLimitInSec * 1000);
 
             socket.once("response", async (response) => {
-                clearTimeout(timeoutId);
+                clearTimeout(timeoutId.current);
                 setShowTimer(-1);
 
                 setWindowLoading("Handling response...");
@@ -65,21 +66,15 @@ function NewRequest() {
                     if (response === "accepted") {
                         await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
 
-                        if (typeOfEncryption === "bb84") {
+                        if (typeOfEncryption === "bb84")
                             socket.emit("updateOnResponseAcceptQC", userId);
-                            const res = await qcCaller.get(`/distributeRawKey/${userId}`);
-                            qkeyBases.current = res.data.bases;
-                            qkeyBits.current = res.data.bits;
-                        }
-                        else {
+                        else
                             socket.emit("updateOnResponseAccepted", userId);
-                        }
-                        socket.emit("joinAck", userId, true);
+
                         setWindowLoading("");
                         resetChatWindow();
 
                         initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host", request.isSimulator);
-
                         setShowChatSession(true);
                     }
                     else {
@@ -90,23 +85,19 @@ function NewRequest() {
                         toast.error("Request was rejected!");
                     }
                 }
-                catch {
+                catch (error) {
+                    console.error(error);
+
                     toast.error("Could not handle request successfully!");
 
                     setWindowLoading("");
                     resetChatWindow();
-
-                    try {
-                        await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
-                        toast.info("Request closed!");
-                    }
-                    catch {
-                        toast.error("Could not close the request!");
-                    }
                 }
             });
         } 
         catch {
+            setWindowLoading("");
+            resetChatWindow();
             toast.error("Something unexpected happened!");
         }
     }

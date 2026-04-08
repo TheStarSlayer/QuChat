@@ -37,7 +37,6 @@ export const socketConnectEvent = async (socket) => {
 };
 
 export const sendJoinRequestEvent = async (socket, request) => {
-    console.log(request);
     const isReceiverOnline = await checkIfOnline(request.receiver);
     if (!isReceiverOnline)
         return socket.emit("requestFailed", "User is not available for requests"); // call finishRequest(cancelled)
@@ -102,8 +101,9 @@ export const joinAckEvent = async (socket, roomId, ack) => {
     const isReceiverOnline = await checkIfOnline(roomId);
     if (!isReceiverOnline)
         return socket.emit("keyGenFailed", "User is not available for requests"); // call finishRequest(cancelled)
- 
+    
     socket.to(roomId).emit("ackFromHost", ack);
+    console.log("Send ackFromHost");
 
     if (!ack)
         return resetSocketStats(socket);
@@ -148,22 +148,28 @@ export const sendMessageEvent = (socket, roomId, message) => {
 
 export const sessionDisturbedEvent = (socket, roomId, message) => {
     socket.to(roomId).emit("sessionDisturbed", message);
-    if (roomId !== socket.userId)
+    if (roomId !== socket.userId) {
         socket.leave(roomId);
+        console.log(`${socket.userId} left ${roomId}`);
+    }
     resetSocketStats(socket);
 };
 
 export const sessionEndEvent = (socket, roomId) => {
     socket.to(roomId).emit("sessionEnd");
-    if (roomId !== socket.userId)
+    if (roomId !== socket.userId) {
         socket.leave(roomId);
+        console.log(`${socket.userId} left ${roomId}`);
+    }
     resetSocketStats(socket);
+
 }
 
 // Event emitted only if roomId != userId and requestFailed is called (or response is rejected for eavesdropper)
 export const leaveEvent = async (socket, roomId) => {
     socket.leave(roomId);
     resetSocketStats(socket);
+    console.log(`${socket.userId} left ${roomId}`);
 };
 
 export const resetSocketStats = socket => {
@@ -246,6 +252,6 @@ export const socketDisconnectEvent = async (socket) => {
         socket.broadcast.emit("userLeft", socket.userId);
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
     }
 };

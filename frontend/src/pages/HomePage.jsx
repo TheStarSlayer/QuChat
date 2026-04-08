@@ -11,7 +11,6 @@ import ChatWindow from "../components/HomeComponents/ChatWindow";
 import WindowLoading from "../components/GeneralComponents/WindowLoading";
 import ConfirmDialogBox from "../components/GeneralComponents/ConfirmDialogBox";
 import ExitPageWarning from "../components/GeneralComponents/ExitPageWarning";
-import Timer from "../components/GeneralComponents/Timer";
 
 function HomePage() {
 
@@ -53,17 +52,13 @@ function HomePage() {
     const [chatRole, setChatRole] = useState("");
     const [statusWindow, setStatusWindow] = useState("Starting up session...");
 
-    const qkeyBases = useRef("");
-    const qkeyBits = useRef("");
-
     const chatSessionStates = {
         chatSessionTimer, setChatSessionTimer,
         chatEncryption, setChatEncryption,
         chatRoomId, setChatRoomId,
         chatRole, setChatRole,
         statusWindow, setStatusWindow,
-        chatUsesSimulator, setChatUsesSimulator,
-        qkeyBases, qkeyBits
+        chatUsesSimulator, setChatUsesSimulator
     };
 
     const navigate = useNavigate();
@@ -79,8 +74,6 @@ function HomePage() {
         setChatUsesSimulator(null);
         setChatRoomId(null);
         setChatRole("");
-        qkeyBases.current = "";
-        qkeyBits.current = "";
     }
 
     function initChatSession(roomId, typeOfEncryption, timer, role, usesSimulator) {

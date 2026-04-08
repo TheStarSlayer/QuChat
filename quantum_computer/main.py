@@ -19,13 +19,15 @@ import math
 
 import pymongo
 
+load_dotenv()
+
 app = FastAPI()
 
 powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
 origins = [
-    "http://localhost:8596", # server
-    "http://localhost:8595", # frontend
+    os.getenv("SERVER_ADDR"), # server
+    os.getenv("FRONTEND_ADDR"), # frontend
 ]
 
 app.add_middleware(
@@ -35,8 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-load_dotenv()
 
 db_client = pymongo.MongoClient(os.getenv("MONGODB_CONN"))
 database = db_client["test"]
@@ -51,12 +51,17 @@ async def authorize_call(
     request: Request,
     call_next
 ):
-    if request.url.path.split("/")[1] not in ["distributeRawKey", "deleteMetadata"]:
+    # Don't block OPTIONS
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    
+    if request.url.path.split("/")[1] not in ["distributeRawKey", "deleteMetadata", "getRandomIndices"]:
         return await call_next(request)
     
     auth_header = request.headers.get("Authorization")
+    
     if not auth_header or not auth_header.startswith("Bearer "):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+        return JSONResponse(status_code=400, content={"error": "Unauthorized"})
 
     import jwt
     
@@ -64,9 +69,10 @@ async def authorize_call(
     try:
         payload = jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
     except:
+        print("jwt expired")
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
 
-    request.state.user = payload.userId
+    request.state.user = payload["userId"]
     return await call_next(request)
 
 @app.get("/rng/{typeOfMachine}")
@@ -103,7 +109,7 @@ async def random_num_generator(
     
     result = job.result()
     counts = result[0].data.meas.get_counts()
-    
+
     return list(counts.keys())
 
 @app.get("/getRandomIndices/{typeOfMachine}")
@@ -170,14 +176,21 @@ async def distribute_raw_key(
     
     request_find_filter = {
         "sender": roomId,
-        "status": "accepted"
+        "status": "accepted" 
     }
     request_select_filter = {
         "sender": 1, "receiver": 1, "_id": 0,
         "eavesdropper": 1, "eavesdropperId": 1,
-        "isSimulator": 1
+        "isSimulator": 1,
     }
-    roomRequest = requests.find_one(request_find_filter, request_select_filter)
+    
+    roomRequest = requests.find_one(
+        request_find_filter,
+        projection=request_select_filter,
+        sort=[("createdOn", -1)]
+    )
+    
+    print(roomRequest)
     
     if not roomRequest:
         return JSONResponse(
@@ -185,11 +198,11 @@ async def distribute_raw_key(
             content={ "error": "Room ID does not exist" }
         )
         
-    typeOfMachine = "sim" if roomRequest.isSimulator else "hw"
+    typeOfMachine = "sim" if roomRequest["isSimulator"] else "hw"
     userId = request.state.user
     circuit_metadata = database["circuit_metadata"]
     
-    if userId == request.sender:
+    if userId == roomRequest["sender"]:
         does_metadata_exists = circuit_metadata.find_one({ "roomId": roomId })
         if does_metadata_exists:
             circuit_metadata.delete_one({ "roomId": roomId })
@@ -216,7 +229,7 @@ async def distribute_raw_key(
             content={ "bases": bitstrings[0], "bits": bitstrings[1] }
         )        
     
-    if userId == request.eavesdropperId or userId == request.receiver:
+    if userId == roomRequest["eavesdropperId"] or userId == roomRequest["receiver"]:
         metadata_find_filter = {
             "roomId": roomId,
             "generatingMetadata": False
@@ -224,27 +237,33 @@ async def distribute_raw_key(
         metadata_select_filter = {
             "senderBases": 1, "senderBits": 1, "_id": 0
         }
-        metadata = circuit_metadata.find_one(metadata_find_filter, metadata_select_filter)
+        
+        metadata = circuit_metadata.find_one_and_update(
+            metadata_find_filter, 
+            {
+                "$set": { "generatingMetadata": True }
+            },
+            projection=metadata_select_filter,
+            return_document=True
+        )
 
-        if not metadata:
+        if metadata is None:
             return JSONResponse(
                 status_code=425,
                 content={ "message": "Call again later" }
             )
         
-        circuit_metadata.update_one(metadata_find_filter, { "$set": { "generatingMetadata": True } })
-        
         bases = (await random_num_generator(typeOfMachine=typeOfMachine))[0]
         
         observed_bits = await generateAndRunBB84Circuit(
-            sender_bits=metadata.senderBits,
-            sender_bases=metadata.senderBases,
+            sender_bits=metadata["senderBits"],
+            sender_bases=metadata["senderBases"],
             receiver_bases=bases,
             typeOfMachine=typeOfMachine,
             bit_length=156
         )
         
-        if userId == request.eavesdropperId:
+        if userId == roomRequest["eavesdropperId"]:
             updated_metadata_dict = {
                 "senderBases": bases,
                 "senderBits": observed_bits,
@@ -252,12 +271,12 @@ async def distribute_raw_key(
             }
             circuit_metadata.update_one({ "roomId": roomId }, { "$set": updated_metadata_dict })
                     
-        if userId == request.receiver:
+        if userId == roomRequest["receiver"]:
             circuit_metadata.delete_one({ "roomId": roomId })        
         
         return JSONResponse(
             status_code=200,
-            content={ "bases": bitstrings[0], "bits": bitstrings[1] }
+            content={ "bases": bases, "bits": observed_bits }
         )  
         
     return JSONResponse(

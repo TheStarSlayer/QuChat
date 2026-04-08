@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
 
@@ -12,6 +12,7 @@ function EavesdroppableRequests() {
 
     const [searchTermForEDR, setSearchTermForEDR] = useState("");
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
+    const timeoutId = useRef("");
 
     function searcher(value) {
         if (value === "") {
@@ -37,13 +38,13 @@ function EavesdroppableRequests() {
 
             setWindowLoading("Sneaked in, now waiting for response from receiver...");
 
-            const timeoutId = setTimeout(() => {
+            timeoutId.current = setTimeout(() => {
                 toast.error("Did not catch any response!");
                 setWindowLoading("");
             }, request.timeLimitInMs);
 
             socket.once("response", (response) => {
-                clearTimeout(timeoutId);
+                clearTimeout(timeoutId.current);
 
                 if (response === "rejected") {
                     toast.info("This request is rejected!");

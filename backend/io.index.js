@@ -6,7 +6,8 @@ import {
     sendMessageEvent, leaveEvent, sessionEndEvent, resetSocketStats,
     updateSocketDataWhenQBERAccepted,
     updateSocketDataWhenAccepted, updateSocketDataWhenAcceptedQC,
-    sessionDisturbedEvent
+    sessionDisturbedEvent, shareBasesEvent,
+    calculateQBEREvent, shareQBERResultEvent
 } from "./lib/socketEventLib.js";
 
 const socketInit = (io) => {
@@ -27,8 +28,7 @@ const socketInit = (io) => {
         socket.on("updateOnResponseAcceptQC", roomId => updateSocketDataWhenAcceptedQC(socket, roomId));
 
         socket.on("reject", async roomId => await rejectEvent(socket, roomId));
-        socket.on("joinAck", async (roomId, ack) =>
-            await joinAckEvent(socket, roomId, ack));
+        socket.on("joinAck", (roomId, ack) => joinAckEvent(socket, roomId, ack));
 
         socket.on("shareBases", (roomId, bases) =>
             shareBasesEvent(socket, roomId, bases));
@@ -44,7 +44,7 @@ const socketInit = (io) => {
         socket.on("sendMessage", (roomId, message) =>
             sendMessageEvent(socket, roomId, message));
 
-        socket.on("leave", async roomId => await leaveEvent(socket, roomId));
+        socket.on("leave", roomId => leaveEvent(socket, roomId));
         socket.on("resetSocketStats", () => resetSocketStats(socket));
         socket.on("sessionDisturbed", (roomId, message) => sessionDisturbedEvent(socket, roomId, message));
         socket.on("sessionEnd", roomId => sessionEndEvent(socket, roomId));
