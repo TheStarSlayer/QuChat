@@ -1,6 +1,5 @@
 import RequestModel from "../models/requests.model.js";
-import { redisClient } from "../index.js";
-import io from "../io.index.js";
+import { redisClient, io } from "../index.js";
 import checkIfOnline from "../lib/checkIfOnline.js";
 import finishRequest from "../lib/finishRequest.js";
 
@@ -19,18 +18,18 @@ export const persistRequestController = async (req, res) => {
 
     // Verify if request already exists
     try {
-        if (await redisClient.zScore('requestIndex', senderId) !== null)
+        if (await redisClient.zScore('allRequestIndex', senderId) !== null)
             return res.status(409).json({ msg: "Request already exists" });
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
 
         try {
             if (await RequestModel.exists({ sender: senderId, status: "pending" }))
                 return res.status(409).json({ msg: "Request already exists" });
         }
         catch (err) {
-            console.error("Unexpected error occurred", err.message);
+            console.error(err);
             return res.status(500).json({ msg: "Internal server error" });
         }
     }
@@ -57,14 +56,14 @@ export const persistRequestController = async (req, res) => {
         await RequestModel.create(newRequest);
 
         await redisClient.multi()
-            .zAdd('allRequestIndex', { score: createdOn, value: senderId })
-            .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
-            .hSet(`requester:${senderId}`, newRequest)
-            .zAdd(`requestee:${receiverId}`, { score: createdOn, value: senderId })
+            .zAdd('allRequestIndex', { score: newRequestPublic.createdOn, value: senderId })
+            .zAdd('EDRequestIndex', { score: newRequestPublic.createdOn, value: senderId })
+            .set(`requester:${senderId}`, JSON.stringify(newRequest))
+            .zAdd(`requestee:${receiverId}`, { score: newRequestPublic.createdOn, value: senderId })
             .exec();
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
         return res.status(500).json({ msg: "Internal server error" });
     }
 
@@ -83,8 +82,10 @@ export const getMyActiveRequestsController = async (req, res) => {
 
     try {
         const requestIndex = await redisClient.zRange(`requestee:${userId}`, 0, -1, { REV: true });
+        
         requests = requestIndex.map(async requester => {
-            const request = await redisClient.hGetAll(`requester:${requester}`);
+            const request = JSON.parse(await redisClient.get(`requester:${requester}`));
+            if (!request) return;
             return {
                 sender: request.sender,
                 receiver: request.receiver,
@@ -97,7 +98,7 @@ export const getMyActiveRequestsController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
 
         try {
             requests = await RequestModel
@@ -107,7 +108,7 @@ export const getMyActiveRequestsController = async (req, res) => {
                 .toArray();
         }
         catch (err) {
-            console.error("Unexpected error occurred", err.message);
+            console.error(err);
             return res.status(500).json({ msg: "Internal server error" });
         }
     }
@@ -123,7 +124,7 @@ export const eavesdroppableRequestsController = async (req, res) => {
 
         requests = requestIndex
             .map(async requester => {
-                const request = await redisClient.hGetAll(`requester:${requester}`);
+                const request = JSON.parse(await redisClient.get(`requester:${requester}`));
                 return {
                     sender: request.sender,
                     receiver: request.receiver,
@@ -137,7 +138,7 @@ export const eavesdroppableRequestsController = async (req, res) => {
             .filter(request => request.sender !== req.userId && request.receiver !== req.userId);
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
 
         try {
             requests = await RequestModel
@@ -151,7 +152,7 @@ export const eavesdroppableRequestsController = async (req, res) => {
                 .toArray();
         }
         catch (err) {
-            console.error("Unexpected error occurred", err.message);
+            console.error(err);
             return res.status(500).json({ msg: "Internal server error" });
         }
     }
@@ -170,14 +171,17 @@ export const eavesdropController = async (req, res) => {
         if (request === null)
             return res.status(404).json({ msg: "Cannot eavesdrop on this chat" });
 
+        const updatedRequest = JSON.parse(await redisClient.get(`requester:${senderId}`));
+        updatedRequest.eavesdropper = true;
+        updatedRequest.eavesdropperId = eavesdropperId;
+
         await redisClient.multi()
-            .hSet(`requester:${senderId}`, "eavesdropper", true)
-            .hSet(`requester:${senderId}`, "eavesdropperId", eavesdropperId)
+            .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
             .zRem('EDRequestIndex', senderId)
             .exec();
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
         return res.status(500).json({ msg: "Internal server error" });
     }
 
@@ -188,9 +192,8 @@ export const eavesdropController = async (req, res) => {
 export const finishRequestController = async (req, res) => {
     const userId = req.userId;
     const finishStatus = req.body.finishStatus;
-
     const result = await finishRequest(userId, finishStatus);
     if (result)
-        return res.status(204);
+        return res.sendStatus(204);
     return res.status(500).json({ msg: "Internal server error" });
 };

@@ -1,8 +1,7 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
-import qcCaller from "../../../lib/qc";
 import Timer from "../../GeneralComponents/Timer";
 
 function NewRequest() {
@@ -11,8 +10,7 @@ function NewRequest() {
         socketRef, setShowTimer, showTimer,
         setShowChatSession,
         userId, resetChatWindow,
-        initChatSession,
-        qkeyBits, qkeyBases
+        initChatSession
     } = useContext(HomeContext);
 
     const [timeLimitInSec, setTimeLimitInSec] = useState(30);
@@ -20,73 +18,118 @@ function NewRequest() {
     const [typeOfEncryption, setTypeOfEncryption] = useState("bb84");
     const [isSimulator, setIsSimulator] = useState(true);
 
+    const timeoutId = useRef(null);
+
     const timeSteps = [30, 45, 60, 75, 90];
     const timeIndex = timeSteps.indexOf(timeLimitInSec);
 
     async function createRequest() {
         setWindowLoading("Sending request...");
+
         try {
-            const response = await apiCaller.post("/persistRequest", {
+            setShowTimer(-1);
+            const reqBody = {
                 receiverId: showNewRequest,
                 timeLimitInMs: timeLimitInSec * 1000,
                 typeOfEncryption,
                 chatSessionTimeInMin,
                 isSimulator
-            });
+            };
+            const response = await apiCaller.post("/persistRequest", reqBody);
 
             const request = response.data.newRequestPublic;
             const socket = socketRef.current;
 
-            socket.emit("sendJoinRequest", showNewRequest, request);
+            socket.emit("sendJoinRequest", request);
             setShowTimer(timeLimitInSec);
+            setWindowLoading("");
 
-            const timeoutId = setTimeout(async () => {
+            timeoutId.current = setTimeout(async () => {
                 setShowTimer(-1);
                 socket.off("response");
                 resetChatWindow();
                 toast.info("Request timed out!");
                 try {
                     await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
-                } catch (error) {
+                }
+                catch {
                     toast.error("Could not close request successfully!");
                 }
             }, timeLimitInSec * 1000);
 
             socket.once("response", async (response) => {
-                clearTimeout(timeoutId);
+                clearTimeout(timeoutId.current);
+                timeoutId.current = null;
                 setShowTimer(-1);
+
                 setWindowLoading("Handling response...");
                 try {
                     if (response === "accepted") {
                         await apiCaller.patch("/finishRequest", { finishStatus: "accepted" });
-                        if (typeOfEncryption === "bb84") {
+
+                        if (typeOfEncryption === "bb84")
                             socket.emit("updateOnResponseAcceptQC", userId);
-                            const res = await qcCaller.get(`/distributeRawKey/${userId}`);
-                            qkeyBases.current = res.data.bases;
-                            qkeyBits.current = res.data.bits;
-                        } else {
+                        else
                             socket.emit("updateOnResponseAccepted", userId);
-                        }
-                        socket.emit("joinAck", userId, true);
+
+                        setWindowLoading("");
                         resetChatWindow();
+
                         initChatSession(userId, request.typeOfEncryption, request.chatSessionTimeInMin, "host", request.isSimulator);
                         setShowChatSession(true);
-                    } else {
-                        await apiCaller.patch("/finishRequest", { finishStatus: "rejected" });
-                        resetChatWindow();
                     }
-                } catch (error) {
+                    else {
+                        await apiCaller.patch("/finishRequest", { finishStatus: "rejected" });
+
+                        setWindowLoading("");
+                        resetChatWindow();
+                        toast.error("Request was rejected!");
+                    }
+                }
+                catch (error) {
+                    console.error(error);
+
                     toast.error("Could not handle request successfully!");
+
+                    setWindowLoading("");
                     resetChatWindow();
-                    try { await apiCaller.patch("/finishRequest", { finishStatus: "timeout" }); } catch {}
                 }
             });
-        } catch (error) {
-            toast.error("Something unexpected happened!");
-        } finally {
+        } 
+        catch {
             setWindowLoading("");
+            resetChatWindow();
+            toast.error("Something unexpected happened!");
         }
     }
+
+    useEffect(() => {
+        return () => {
+            async function closeFunction() {
+                if (timeoutId.current !== null) {
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
+                    const socket = socketRef.current;
+                    
+                    clearTimeout(timeoutId);
+                    timeoutId.current = null;
+
+                    setShowTimer(-1);
+                    socket.off("response");
+                    resetChatWindow();
+                    toast.info("Request timed out!");
+                    try {
+                        await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                    }
+                    catch {
+                        toast.error("Could not close request successfully!");
+                    }
+                }
+            }
+
+            closeFunction();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="flex-1 flex flex-col items-center overflow-y-auto relative"
@@ -246,7 +289,7 @@ function NewRequest() {
                                         <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                                     </svg>
                                     <span style={{ fontSize: "11px", color: "rgba(216,121,0,0.9)", lineHeight: 1.4 }}>
-                                        A real quantum machine will take an indefinite time to get request in queue.
+                                        A real quantum machine may take a long time to generate a key. This app does not currently handle noise from hardware. Your session may get invalidated!
                                     </span>
                                 </div>
                             )}

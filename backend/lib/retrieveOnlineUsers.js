@@ -9,7 +9,7 @@ const retrieveOnlineUsers = async (currUserId) => {
             
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
 
         try {
             onlineUsers = await OnlineUsers
@@ -20,7 +20,7 @@ const retrieveOnlineUsers = async (currUserId) => {
                 .map(user => user.username);
         }
         catch (err) {
-            console.error("Unexpected error occurred", err.message);
+            console.error(err);
             return null;
         }
     }

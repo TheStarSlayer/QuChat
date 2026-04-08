@@ -30,9 +30,10 @@ export const socketConnectEvent = async (socket) => {
             username: socket.userId,
             profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png` 
         });
+        console.log(`${socket.userId} joined!`);
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
     }
 };
 
@@ -101,7 +102,7 @@ export const joinAckEvent = async (socket, roomId, ack) => {
     const isReceiverOnline = await checkIfOnline(roomId);
     if (!isReceiverOnline)
         return socket.emit("keyGenFailed", "User is not available for requests"); // call finishRequest(cancelled)
- 
+    
     socket.to(roomId).emit("ackFromHost", ack);
 
     if (!ack)
@@ -147,22 +148,28 @@ export const sendMessageEvent = (socket, roomId, message) => {
 
 export const sessionDisturbedEvent = (socket, roomId, message) => {
     socket.to(roomId).emit("sessionDisturbed", message);
-    if (roomId !== socket.userId)
+    if (roomId !== socket.userId) {
         socket.leave(roomId);
+        console.log(`${socket.userId} left ${roomId}`);
+    }
     resetSocketStats(socket);
 };
 
 export const sessionEndEvent = (socket, roomId) => {
     socket.to(roomId).emit("sessionEnd");
-    if (roomId !== socket.userId)
+    if (roomId !== socket.userId) {
         socket.leave(roomId);
+        console.log(`${socket.userId} left ${roomId}`);
+    }
     resetSocketStats(socket);
+
 }
 
 // Event emitted only if roomId != userId and requestFailed is called (or response is rejected for eavesdropper)
 export const leaveEvent = async (socket, roomId) => {
     socket.leave(roomId);
     resetSocketStats(socket);
+    console.log(`${socket.userId} left ${roomId}`);
 };
 
 export const resetSocketStats = socket => {
@@ -195,11 +202,16 @@ export const socketDisconnectEvent = async (socket) => {
             socket.to(socket.ackWaitSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
 
             if (socket.userId == socket.ackWaitSession) {
-                fetch(`http://localhost:8598/deleteMetadata/${socket.ackWaitSession}`, {
+                const res = fetch(`${process.env.QC_ADDR}/deleteMetadata/${socket.ackWaitSession}`, {
+                    method: "DELETE",
                     headers: {
                         "Authorization": `Bearer ${socket.handshake.auth.token}`
                     }
                 });
+
+                if (!res.ok) {
+                    console.error("Could not delete key gen metadata!");   
+                }
             }
         }
 
@@ -218,15 +230,18 @@ export const socketDisconnectEvent = async (socket) => {
 
                 await RequestModel.findOneAndUpdate(findFilter, updateFilter);
 
-                const createdOn = await redisClient.hGet(`requester:${senderId}`, "createdOn");
+                const updatedRequest = JSON.parse(await redisClient.get(`requester:${senderId}`));
+                updatedRequest.eavesdropper = false;
+                updatedRequest.eavesdropperId = null;
+                const createdOn = updatedRequest.createdOn;
+
                 await redisClient.multi()
-                    .hSet(`requester:${senderId}`, "eavesdropper", false)
-                    .hSet(`requester:${senderId}`, "eavesdropperId", null)
+                    .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
                     .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
                     .exec();
             }
             catch (err) {
-                console.error("Unexpected error occurred", err.message);
+                console.error(err);
             }
         }
 
@@ -235,8 +250,9 @@ export const socketDisconnectEvent = async (socket) => {
         }
 
         socket.broadcast.emit("userLeft", socket.userId);
+        console.log(`${socket.userId} left!`);
     }
     catch (err) {
-        console.error("Unexpected error occurred", err.message);
+        console.error(err);
     }
 };

@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 function RequestsToMe() {
@@ -13,7 +13,6 @@ function RequestsToMe() {
     const [subsetRequestsToMe, setSubsetRequestsToMe] = useState([...requestsToMe]);
 
     function searcher(value) {
-        setSearchTermForRTM(value);
         if (value === "") {
             setSubsetRequestsToMe([...requestsToMe]);
         } else {
@@ -21,6 +20,11 @@ function RequestsToMe() {
             setSubsetRequestsToMe(requestsToMe.filter(r => regex.test(r.sender)));
         }
     }
+
+    useEffect(() => {
+        (() => searcher(searchTermForRTM))();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requestsToMe]);
 
     async function respondToRequest(request, response) {
         const socket = socketRef.current;
@@ -33,9 +37,12 @@ function RequestsToMe() {
         if (response) {
             socket.emit("accept", request.sender, request.typeOfEncryption);
             resetChatWindow();
+
             initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "receiver", request.isSimulator);
+            
             setShowChatSession(true);
-        } else {
+        }
+        else {
             socket.emit("reject", request.sender);
             setRequestsToMe(requests => requests.filter(r => r.sender !== request.sender));
             setSubsetRequestsToMe(requests => requests.filter(r => r.sender !== request.sender));
@@ -60,9 +67,9 @@ function RequestsToMe() {
                     style={{ borderBottom: "1px solid rgba(33,150,243,0.08)" }}>
                     <div>
                         <h2 className="text-xl font-bold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#2196F3" }}>
-                            MyRequests
+                            My Requests
                         </h2>
-                        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>Manage pending quantum signal authorizations</p>
+                        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>Manage requests sent to me.</p>
                     </div>
                     <button
                         onClick={resetChatWindow}
@@ -86,7 +93,7 @@ function RequestsToMe() {
                         <input
                             type="text"
                             value={searchTermForRTM}
-                            onChange={e => searcher(e.target.value)}
+                            onChange={e => {setSearchTermForRTM(e.target.value); searcher(e.target.value);}}
                             placeholder="Search myrequests..."
                             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-white text-sm outline-none transition-all"
                             style={{

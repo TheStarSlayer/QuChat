@@ -18,6 +18,7 @@ export const apiVerify = async (req, res, next) => {
         next();
     }
     catch (err) {
+        console.error(err);
         return res.status(401).json({ error: 'Invalid auth token' });
     }
 };

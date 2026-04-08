@@ -62,7 +62,7 @@ function EmptyChatWindow() {
                 </p>
 
                 {/* Action buttons */}
-                <div className="flex gap-4 w-full max-w-sm">
+                <div className="flex gap-4 w-full max-w-sm mt-10">
 
                     {/* MyRequests */}
                     <button
@@ -72,7 +72,9 @@ function EmptyChatWindow() {
                             background: "linear-gradient(135deg, #2196F3, #1565C0)",
                             boxShadow: "0 0 24px rgba(33,150,243,0.3)",
                             fontFamily: "'Space Grotesk', sans-serif",
-                            fontSize: "15px"
+                            fontSize: "15px",
+                            padding: "15px",
+                            marginRight: "30px"
                         }}
                         onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 36px rgba(33,150,243,0.5)"}
                         onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 24px rgba(33,150,243,0.3)"}
@@ -80,7 +82,7 @@ function EmptyChatWindow() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
-                        MyRequests
+                        My Requests
                     </button>
 
                     {/* Eavesdrop */}
@@ -92,7 +94,9 @@ function EmptyChatWindow() {
                             border: "1px solid rgba(33,150,243,0.25)",
                             color: "#2196F3",
                             fontFamily: "'Space Grotesk', sans-serif",
-                            fontSize: "15px"
+                            fontSize: "15px",
+                            padding: "15px",
+                            marginLeft: "30px"
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(33,150,243,0.08)"; e.currentTarget.style.borderColor = "rgba(33,150,243,0.5)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(33,150,243,0.25)"; }}

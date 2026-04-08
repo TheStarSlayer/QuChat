@@ -27,7 +27,9 @@ function OnlineUsers() {
     }, [onlineUsers]);
 
     function newRequest(receiverUserId) {
-        if (showChatSession) return;
+        if (showChatSession)
+            return;
+        
         setShowRequestsToMe(false);
         setShowEavesdroppableRequests(false);
         setShowNewRequest(receiverUserId);

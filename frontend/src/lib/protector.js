@@ -5,5 +5,9 @@ export const encrypt = (text, key) => {
 };
 
 export const decrypt = (cipher, key) => {
-    return CryptoJS.AES.decrypt(cipher, key).toString();
+    return CryptoJS.AES.decrypt(cipher, key).toString(CryptoJS.enc.Utf8);
 };
+
+export const privacyAmplification = (key) => {
+    return CryptoJS.SHA256(key).toString();
+}

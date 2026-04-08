@@ -11,7 +11,6 @@ import ChatWindow from "../components/HomeComponents/ChatWindow";
 import WindowLoading from "../components/GeneralComponents/WindowLoading";
 import ConfirmDialogBox from "../components/GeneralComponents/ConfirmDialogBox";
 import ExitPageWarning from "../components/GeneralComponents/ExitPageWarning";
-import Timer from "../components/GeneralComponents/Timer";
 
 function HomePage() {
 
@@ -43,7 +42,7 @@ function HomePage() {
     const [showTimer, setShowTimer] = useState(-1);
     const [showConfirmDialogBox, setShowConfirmDialogBox] = useState("");
     const generalComponentStates = {
-        setWindowLoading, setShowTimer, setShowConfirmDialogBox
+        setWindowLoading, showTimer, setShowTimer, setShowConfirmDialogBox
     };
 
     const [chatSessionTimer, setChatSessionTimer] = useState(-1);
@@ -53,17 +52,13 @@ function HomePage() {
     const [chatRole, setChatRole] = useState("");
     const [statusWindow, setStatusWindow] = useState("Starting up session...");
 
-    const qkeyBases = useRef("");
-    const qkeyBits = useRef("");
-
     const chatSessionStates = {
         chatSessionTimer, setChatSessionTimer,
         chatEncryption, setChatEncryption,
         chatRoomId, setChatRoomId,
         chatRole, setChatRole,
         statusWindow, setStatusWindow,
-        chatUsesSimulator, setChatUsesSimulator,
-        qkeyBases, qkeyBits
+        chatUsesSimulator, setChatUsesSimulator
     };
 
     const navigate = useNavigate();
@@ -79,8 +74,6 @@ function HomePage() {
         setChatUsesSimulator(null);
         setChatRoomId(null);
         setChatRole("");
-        qkeyBases.current = "";
-        qkeyBits.current = "";
     }
 
     function initChatSession(roomId, typeOfEncryption, timer, role, usesSimulator) {
@@ -115,13 +108,17 @@ function HomePage() {
             socket.on("connect_error", async (error) => {
                 if (error.message === "User already exists!") {
                     setAlreadyLoggedIn(true);
-                } else {
+                }
+                else {
                     try {
                         const response = await authCaller.post("/refresh");
                         localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
                         socket.auth.token = response.data.accessToken;
                         socket.connect();
-                    } catch (error) { console.error(error); }
+                    } 
+                    catch (error) {
+                        console.error(error);
+                    }
                 }
             });
 
@@ -144,9 +141,20 @@ function HomePage() {
                 .catch(() => toast.error("Could not get online users!"));
 
             const socket = socketRef.current;
-            socket.on("newUser", (newUser) => setOnlineUsers(prev => [newUser, ...prev]));
-            socket.on("userLeft", (uid) => setOnlineUsers(prev => prev.filter(u => u.username !== uid)));
-            return () => { socket.off("newUser"); socket.off("userLeft"); };
+            
+            socket.on("newUser", (newUser) => {
+                if (newUser.username !== userId)
+                    setOnlineUsers(prev => [newUser, ...prev])
+            });
+
+            socket.on("userLeft", (uid) => 
+                setOnlineUsers(prev => prev.filter(u => u.username !== uid))
+            );
+            
+            return () => {
+                socket.off("newUser");
+                socket.off("userLeft");
+            };
         }
     }, [userId, alreadyLoggedIn]);
 
@@ -157,9 +165,20 @@ function HomePage() {
                 .catch(() => toast.error("Could not get your active requests!"));
 
             const socket = socketRef.current;
-            socket.on("requestToJoin", (request) => setRequestsToMe(prev => [request, ...prev]));
-            socket.on("removeRequest", (uid) => setRequestsToMe(prev => prev.filter(r => r.sender !== uid)));
-            return () => { socket.off("requestToJoin"); socket.off("removeRequest"); };
+
+            socket.on("requestToJoin", (request) => {
+                toast.info(`New request from ${request.sender}`);
+                setRequestsToMe(prev => [request, ...prev])
+            });
+
+            socket.on("removeRequest", (uid) => {
+                setRequestsToMe(prev => prev.filter(r => r.sender !== uid))
+            });
+
+            return () => {
+                socket.off("requestToJoin");
+                socket.off("removeRequest");
+            };
         }
     }, [alreadyLoggedIn, userId]);
 
@@ -170,12 +189,20 @@ function HomePage() {
                 .catch(() => toast.error("Could not get eavesdroppable requests!"));
 
             const socket = socketRef.current;
+
             socket.on("requestForED", (request) => {
                 if (request.sender !== userId && request.receiver !== userId)
                     setEavesdroppableRequests(prev => [request, ...prev]);
             });
-            socket.on("removeRequestForED", (uid) => setEavesdroppableRequests(prev => prev.filter(r => r.sender !== uid)));
-            socket.on("removeRequest", (uid) => setEavesdroppableRequests(prev => prev.filter(r => r.sender !== uid)));
+
+            socket.on("removeRequestForED", (uid) =>
+                setEavesdroppableRequests(prev => prev.filter(r => r.sender !== uid))
+            );
+
+            socket.on("removeRequest", (uid) =>
+                setEavesdroppableRequests(prev => prev.filter(r => r.sender !== uid))
+            );
+            
             return () => {
                 socket.off("requestForED");
                 socket.off("removeRequestForED");
@@ -234,7 +261,6 @@ function HomePage() {
 
             {/* Overlays — outside layout div but inside provider */}
             {alreadyLoggedIn && <ExitPageWarning />}
-            {showTimer !== -1 && <Timer time={showTimer} />}
             {windowLoading !== "" && <WindowLoading message={windowLoading} />}
             {showConfirmDialogBox !== "" && <ConfirmDialogBox message={showConfirmDialogBox} />}
 

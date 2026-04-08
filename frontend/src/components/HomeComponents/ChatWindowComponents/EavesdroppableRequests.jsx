@@ -1,5 +1,5 @@
 import HomeContext from "../../../contexts/HomeContext";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import apiCaller from "../../../lib/api";
 import { toast } from "react-toastify";
 
@@ -12,9 +12,9 @@ function EavesdroppableRequests() {
 
     const [searchTermForEDR, setSearchTermForEDR] = useState("");
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
+    const timeoutId = useRef("");
 
     function searcher(value) {
-        setSearchTermForEDR(value);
         if (value === "") {
             setSubsetEDRequests([...eavesdroppableRequests]);
         } else {
@@ -23,34 +23,57 @@ function EavesdroppableRequests() {
         }
     }
 
+    useEffect(() => {
+        (() => searcher(searchTermForEDR))();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eavesdroppableRequests]);
+
     async function eavesdropRequest(request) {
         setWindowLoading("Sneaking...");
         try {
             await apiCaller.patch(`/eavesdrop/${request.sender}`);
+            
             const socket = socketRef.current;
-            setWindowLoading("Waiting for response from receiver...");
+            socket.emit("eavesdropRequest", request.sender);
 
-            const timeoutId = setTimeout(() => {
-                throw new Error("Request timed out");
+            setWindowLoading("Sneaked in, now waiting for response from receiver...");
+
+            timeoutId.current = setTimeout(() => {
+                toast.error("Did not catch any response!");
+                setWindowLoading("");
             }, request.timeLimitInMs);
 
             socket.once("response", (response) => {
-                clearTimeout(timeoutId);
-                if (response === "rejected") throw new Error("Receiver rejected the chat request!");
+                clearTimeout(timeoutId.current);
 
-                if (request.typeOfEncryption === "bb84")
-                    socket.emit("updateOnResponseAcceptQC", userId);
-                else
-                    socket.emit("updateOnResponseAccept", userId);
+                if (response === "rejected") {
+                    toast.info("This request is rejected!");
+                    setWindowLoading("");
+                    socket.emit("leave");
+                }
+                else {
+                    if (request.typeOfEncryption === "bb84")
+                        socket.emit("updateOnResponseAcceptQC", userId);
+                    else
+                        socket.emit("updateOnResponseAccept", userId);
 
-                resetChatWindow();
-                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
-                setShowChatSession(true);
+                    setWindowLoading("");
+                    resetChatWindow();
+
+                    initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
+
+                    setShowChatSession(true);
+                }
+                
             });
-        } catch (error) {
-            if (error.response?.status === 404) toast.error("This request cannot be eavesdropped now!");
-            else { toast.error(error.message); console.error(error); }
-        } finally {
+        }
+        catch (error) {
+            if (error.response?.status === 404)
+                toast.error("This request cannot be eavesdropped now!");
+            else {
+                toast.error(error.message);
+                console.error(error);
+            }
             setWindowLoading("");
         }
     }
@@ -74,7 +97,7 @@ function EavesdroppableRequests() {
                         <h2 className="text-xl font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#2196F3" }}>
                             Eavesdrop Request
                         </h2>
-                        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>Select an active quantum channel to monitor.</p>
+                        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>Select an active request to monitor.</p>
                     </div>
                     <button
                         onClick={resetChatWindow}
@@ -98,7 +121,7 @@ function EavesdroppableRequests() {
                         <input
                             type="text"
                             value={searchTermForEDR}
-                            onChange={e => searcher(e.target.value)}
+                            onChange={e => {setSearchTermForEDR(e.target.value); searcher(e.target.value);}}
                             placeholder="Filter by user..."
                             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-white text-sm outline-none transition-all"
                             style={{

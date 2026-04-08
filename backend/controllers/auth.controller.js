@@ -34,7 +34,7 @@ export const signupController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("Unexpeted error occurred: ", err.message);
+        console.error(err);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
@@ -75,7 +75,7 @@ export const loginController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("Unexpeted error occurred: ", err.message);
+        console.error(err);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
@@ -126,7 +126,7 @@ export const refreshController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("Unexpeted error occurred: ", err.message);
+        console.error(err);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
@@ -153,7 +153,7 @@ export const logoutController = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("Unexpeted error occurred: ", err.message);
+        console.error(err);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 };
