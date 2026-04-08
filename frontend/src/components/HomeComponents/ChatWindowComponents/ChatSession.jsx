@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import HomeContext from "../../../contexts/HomeContext";
 import { toast } from "react-toastify";
 import qcCaller from "../../../lib/qc";
-import { encrypt, decrypt } from "../../../lib/protector";
+import { encrypt, decrypt, privacyAmplification } from "../../../lib/protector";
 import ChatSessionStatus from "./ChatSessionStatus";
 import apiCaller from "../../../lib/api";
 
@@ -29,6 +29,8 @@ function ChatSession() {
     const tryAgainLater = useRef(0);
     const isRequestInProgress = useRef(false);
     const messagesEndRef = useRef(null);
+
+    const quantumKey = useRef(null);
 
     // Auto scroll to bottom
     useEffect(() => {
@@ -90,7 +92,6 @@ function ChatSession() {
 
         siftedQkeyBits.current = myKey;
 
-
         return randBits;
     }
 
@@ -112,23 +113,26 @@ function ChatSession() {
             toast.success("You are free to chat!");
         else
             toast.success("Eavesdropped successfully! You can now secretly view the chat!");
+
+        if (chatEncryption === "bb84")
+            quantumKey.current = privacyAmplification(siftedQkeyBits.current);
     }
 
     function sendMessage() {
         if (!message.trim())
             return;
         const socket = socketRef.current;
-        let messageToSend = message;
 
         setChatMessages(prev => 
-            [...prev, { message: messageToSend, sender: userId, senderProfilePic: profilePic, isMe: true }]
+            [...prev, { message: message, sender: userId, senderProfilePic: profilePic, isMe: true }]
         );
-        setMessage("");
+        let messageToSend = message;
 
         if (chatEncryption !== "none")
-            messageToSend = encrypt(messageToSend, siftedQkeyBits.current);
+            messageToSend = encrypt(messageToSend, quantumKey.current);
         
         socket.emit("sendMessage", chatRoomId, messageToSend);
+        setMessage("");
     }
 
     function closeChatSession() {
@@ -139,6 +143,7 @@ function ChatSession() {
         else
             socket.emit("leave", chatRoomId);
         
+
         resetChatWindow();
         toast.success("Left chat session!");
     }
@@ -371,9 +376,8 @@ function ChatSession() {
 
         socket.on("message", ({ message: msg, sender, profilePic: senderPic }) => {
             let receivedMessage = msg;
-
             if (chatEncryption !== "none") 
-                receivedMessage = decrypt(msg, siftedQkeyBits.current);
+                receivedMessage = decrypt(msg, quantumKey.current);
 
             setChatMessages(prev => 
                 [...prev, { message: receivedMessage, sender, senderProfilePic: senderPic, isMe: false }]
