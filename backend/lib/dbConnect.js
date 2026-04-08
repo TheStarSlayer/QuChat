@@ -26,6 +26,8 @@ export const redisConnect = async () => {
             console.error(err);
         });
         await client.connect();
+        await client.flushAll();
+
         return client;
     }
     catch (err) {
