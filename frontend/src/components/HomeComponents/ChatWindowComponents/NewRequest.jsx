@@ -87,6 +87,7 @@ function NewRequest() {
 
                         setWindowLoading("");
                         resetChatWindow();
+                        toast.error("Request was rejected!");
                     }
                 }
                 catch {

@@ -1,5 +1,6 @@
 // ChatSessionStatus.jsx — displays key generation / session security status
-function ChatSessionStatus({ message }) {
+function ChatSessionStatus({ message, chatEncryption }) {
+
     return (
         <div className="flex-1 flex flex-col items-center justify-center"
             style={{ fontFamily: "'Courier New', Courier, monospace" }}>
@@ -23,13 +24,26 @@ function ChatSessionStatus({ message }) {
                     </svg>
                 </div>
             </div>
-
-            <h3 className="text-white font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                Securing Quantum Channel
-            </h3>
-            <p className="text-center max-w-xs" style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-                {message || "Initializing BB84 quantum key distribution protocol..."}
-            </p>
+            {chatEncryption === "none" ? (
+            <>
+                <h3 className="text-white font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Starting session
+                </h3>
+                <p className="text-center max-w-xs" style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+                    {message}
+                </p>
+            </>
+            ) : (
+            <>
+                <h3 className="text-white font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Securing Quantum Channel
+                </h3>
+                <p className="text-center max-w-xs" style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+                    {message || "Initializing BB84 quantum key distribution protocol..."}
+                </p>
+            </>
+            )}
+            
 
             {/* Animated dots */}
             <div className="flex gap-1.5 mt-6">

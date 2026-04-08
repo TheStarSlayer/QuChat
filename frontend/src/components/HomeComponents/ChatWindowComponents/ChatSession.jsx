@@ -360,8 +360,7 @@ function ChatSession() {
 
     // Determine other party names for header
     const isEavesdropper = chatRole === "eavesdropper";
-    const isSender = chatRole === "host";
-    const otherParty = isSender ? chatRoomId : chatRoomId; // roomId = sender's userId
+    const subText = chatEncryption === "none" ? "Session Active" : "Quantum Encryption Active";
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden"
@@ -374,17 +373,17 @@ function ChatSession() {
                 {/* Other party info */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <img
-                        src={`https://cdn.auth0.com/avatars/${otherParty?.[0]?.toLowerCase()}${otherParty?.[1]?.toLowerCase()}.png`}
-                        alt={otherParty}
+                        src={`https://cdn.auth0.com/avatars/${chatRoomId?.[0]?.toLowerCase()}${chatRoomId?.[1]?.toLowerCase()}.png`}
+                        alt={chatRoomId}
                         className="w-9 h-9 rounded-full shrink-0"
                         style={{ border: "2px solid rgba(33,150,243,0.3)" }}
                     />
                     <div className="min-w-0">
                         <p className="text-white font-bold text-sm truncate" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                            {otherParty}
+                            {chatRoomId}'s session
                         </p>
                         <p style={{ fontSize: "10px", color: "rgba(34,197,94,0.8)" }}>
-                            {isEavesdropper ? "Monitoring session" : "Quantum Link · Stable"}
+                            {isEavesdropper ? "Monitoring session" : subText}
                         </p>
                     </div>
                 </div>
@@ -432,7 +431,7 @@ function ChatSession() {
             </div>
 
             {/* Status / Key gen waiting */}
-            {!freeToChat && <ChatSessionStatus message={statusWindow} />}
+            {!freeToChat && <ChatSessionStatus message={statusWindow} chatEncryption={chatEncryption} />}
 
             {/* Messages area */}
             {freeToChat && (
