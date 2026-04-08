@@ -30,6 +30,7 @@ export const socketConnectEvent = async (socket) => {
             username: socket.userId,
             profilePicture: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png` 
         });
+        console.log(`${socket.userId} joined!`);
     }
     catch (err) {
         console.error(err);
@@ -103,7 +104,6 @@ export const joinAckEvent = async (socket, roomId, ack) => {
         return socket.emit("keyGenFailed", "User is not available for requests"); // call finishRequest(cancelled)
     
     socket.to(roomId).emit("ackFromHost", ack);
-    console.log("Send ackFromHost");
 
     if (!ack)
         return resetSocketStats(socket);
@@ -250,6 +250,7 @@ export const socketDisconnectEvent = async (socket) => {
         }
 
         socket.broadcast.emit("userLeft", socket.userId);
+        console.log(`${socket.userId} left!`);
     }
     catch (err) {
         console.error(err);
