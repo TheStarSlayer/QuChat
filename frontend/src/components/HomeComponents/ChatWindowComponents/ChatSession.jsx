@@ -277,7 +277,20 @@ function ChatSession() {
 
                             setStatusWindow("Intercepted bits and resent to receiver...");
 
+                            let timesBasesIntercepted = 0;
+                            socket.on("bases", (bases) => {
+                                if (timesBasesIntercepted === 0) {
+                                    setStatusWindow(`Intercepted receiver's bases: ${bases}`);
+                                    timesBasesIntercepted++;
+                                }
+                                else {
+                                    setStatusWindow(`Intercepted host's bases: ${bases}`);
+                                    socket.off("bases");
+                                }
+                            });
+
                             socket.once("qberResult", (receivedQber) => {
+                                socket.off("bases");
                                 if (receivedQber > QBERThreshold) {
                                     toast.error("Detected by BB84 QKD algorithm!");
                                     setStatusWindow("");
