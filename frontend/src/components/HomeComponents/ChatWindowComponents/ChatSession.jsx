@@ -535,12 +535,12 @@ function ChatSession() {
             );
         });
 
-        socket.on("keyGenFailed", (msg) => {
+        socket.on("keyGenFailed", async (msg) => {
             if (userId !== chatRoomId)
                 socket.emit("leave", chatRoomId);
 
             toast.error(msg);
-            resetChatWindow();
+            setTimeout(() => resetChatWindow(), 1000);
         });
 
         socket.on("requestFailed", (msg) => {
@@ -548,7 +548,7 @@ function ChatSession() {
                 socket.emit("leave", chatRoomId);
 
             toast.error(msg);
-            resetChatWindow();
+            setTimeout(() => resetChatWindow(), 1000);
         });
 
         socket.on("sessionEnd", () => {
@@ -556,7 +556,7 @@ function ChatSession() {
                 socket.emit("leave", chatRoomId);
 
             toast.info("Session ended gracefully");
-            resetChatWindow();
+            setTimeout(() => resetChatWindow(), 1000);            
         });
 
         socket.on("sessionDisturbed", (msg) => {
@@ -567,11 +567,10 @@ function ChatSession() {
                 toast.error("Generated keys are not the same!");
                 toast.error("This means that sampling missed mismatched bits.");
                 toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
-                return;
             }
 
             toast.error(msg);
-            resetChatWindow();
+            setTimeout(() => resetChatWindow(), 1000);
         });
 
         return () => {
