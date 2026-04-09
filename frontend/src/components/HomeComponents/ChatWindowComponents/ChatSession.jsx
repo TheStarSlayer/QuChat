@@ -22,8 +22,7 @@ function ChatSession() {
     const [message, setMessage] = useState("");
     const [timeLeft, setTimeLeft] = useState(chatSessionTimer * 60);
     const [sendingFile, setSendingFile] = useState("");
-    const [filesSentByMe, setFilesSentByMe] = useState([]);
-
+    
     const qkeyBases = useRef("");
     const qkeyBits = useRef("");
     const siftedQkeyBits = useRef("");
@@ -35,6 +34,7 @@ function ChatSession() {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
     const isSetToBusy = useRef(false);
+    const filesSentByMe = useRef([]);
 
     const QBERThreshold = chatUsesSimulator ? 0 : 10;
 
@@ -123,7 +123,7 @@ function ChatSession() {
                     });
                 }
 
-                setFilesSentByMe(prev => [...prev, key]);
+                filesSentByMe.current.push(key);
             }
             catch (error) {
                 console.error(error);
@@ -156,6 +156,7 @@ function ChatSession() {
             newMessage.message = await encrypt(newMessage.message, quantumKey.current);
         
         socket.emit("sendMessage", chatRoomId, newMessage);
+        
         setMessage("");
         sendingFile !== "" && setSendingFile("");
     }
@@ -583,23 +584,21 @@ function ChatSession() {
                     toast.info("You are now available for requests!");
                     isSetToBusy.current = false;
                 }
-            })();
 
-            (async () => {
+                // Delete files that are added by sender
                 try {
-                    if (filesSentByMe.length > 0) {
+                    if (filesSentByMe.current.length > 0) {
                         await apiCaller.delete("/deleteObjects", {
-                            bucketName: "quchat",
-                            keys: filesSentByMe
+                            data: {
+                                bucketName: "quchat",
+                                keys: filesSentByMe.current
+                            }
                         });
                         toast.success("All files sent by you are no longer stored online!");
                     }
                 }
                 catch {
                     toast.info("Could not delete all files sent by you!");
-                }
-                finally {
-                    setFilesSentByMe([]);
                 }
             })();
         };
