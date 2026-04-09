@@ -140,8 +140,10 @@ export const sendMessageEvent = (socket, roomId, message) => {
     const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase();
 
     socket.to(roomId).emit("message", {
-        message: message,
-        sender: socket.userId,
+        message: message.message,
+        sender: message.sender,
+        containsFile: message.containsFile,
+        fileKey: message.fileKey,
         profilePic: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png`
     });
 };
