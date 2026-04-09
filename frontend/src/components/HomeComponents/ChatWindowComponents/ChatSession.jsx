@@ -513,14 +513,12 @@ function ChatSession() {
                 receivedMessage = await decrypt(receivedMessage, quantumKey.current);
 
                 if (!message.containsFile && !receivedMessage.trim()) {
-                    if (userId !== chatRoomId)
-                        socket.emit("leave", chatRoomId);
-
                     socket.emit("sessionDisturbed", chatRoomId, "sample_error");
 
                     toast.error("Generated keys are not the same!");
                     toast.error("This means that sampling missed mismatched bits.");
                     toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
+                    
                     resetChatWindow();
                     return;
                 }
