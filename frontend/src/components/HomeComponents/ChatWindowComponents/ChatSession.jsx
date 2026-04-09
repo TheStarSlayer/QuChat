@@ -2,9 +2,10 @@ import { useContext, useEffect, useRef, useState } from "react";
 import HomeContext from "../../../contexts/HomeContext";
 import { toast } from "react-toastify";
 import qcCaller from "../../../lib/qc";
-import { encrypt, decrypt, privacyAmplification } from "../../../lib/protector";
+import { encrypt, decrypt, encryptFile, decryptFile, getAESKey } from "../../../lib/protector";
 import ChatSessionStatus from "./ChatSessionStatus";
 import apiCaller from "../../../lib/api";
+import axios from "axios";
 
 function ChatSession() {
     const {
@@ -12,55 +13,29 @@ function ChatSession() {
         chatRoomId, chatRole, chatUsesSimulator,
         socketRef, userId, profilePic,
         statusWindow, setStatusWindow,
-        resetChatWindow,
+        resetChatWindow, setWindowLoading
     } = useContext(HomeContext);
 
     const [freeToChat, setFreeToChat] = useState(false);
-    const siftedQkeyBits = useRef("");
     const [QBER, setQBER] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
     const [message, setMessage] = useState("");
     const [timeLeft, setTimeLeft] = useState(chatSessionTimer * 60);
+    const [sendingFile, setSendingFile] = useState("");
 
     const qkeyBases = useRef("");
     const qkeyBits = useRef("");
+    const siftedQkeyBits = useRef("");
+    const quantumKey = useRef(null);
 
     const intervalId = useRef(null);
     const tryAgainLater = useRef(0);
     const isRequestInProgress = useRef(false);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
     const isSetToBusy = useRef(false);
 
-    const quantumKey = useRef(null);
-
     const QBERThreshold = chatUsesSimulator ? 0 : 10;
-
-    // Auto scroll to bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatMessages]);
-
-    // Session countdown timer
-    useEffect(() => {
-        if (!freeToChat)
-            return;
-
-        setTimeLeft(chatSessionTimer * 60);
-
-        const interval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) { 
-                    clearInterval(interval);
-                    timerEnds();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [freeToChat]);
 
     function formatTime(secs) {
         const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -109,7 +84,7 @@ function ChatSession() {
         return (mismatched / hostRandBits.length) * 100;
     }
 
-    function sessionStarted() {
+    async function sessionStarted() {
         setStatusWindow("");
         setFreeToChat(true);
         if (chatRole !== "eavesdropper")
@@ -118,24 +93,136 @@ function ChatSession() {
             toast.success("Eavesdropped successfully! You can now secretly view the chat!");
 
         if (chatEncryption === "bb84")
-            quantumKey.current = privacyAmplification(siftedQkeyBits.current);
+            quantumKey.current = await getAESKey(siftedQkeyBits.current);
     }
 
-    function sendMessage() {
-        if (!message.trim())
-            return;
+    async function sendMessage() {
         const socket = socketRef.current;
 
+        if (sendingFile !== "") {
+            setWindowLoading("Uploading file...");
+
+            // Validate file size before attempting upload
+            if (!checkFileSize(sendingFile)) {
+                toast.error("File too large!");
+                setSendingFile("");
+                return;
+            }
+
+            const key = sendingFile.name;
+            const fileType = sendingFile.type;
+            try {
+                const res = await apiCaller.get(`/getUploadLink`, {
+                    params: { bucketName: "quchat", key, fileType }
+                });
+                const uploadLink = res.data.uploadLink;
+
+                if (chatEncryption === "bb84") {
+                    const encryptedFile = await encryptFile(sendingFile, quantumKey.current);
+                    await axios.put(uploadLink, encryptedFile, { 
+                        headers: { "Content-Type": fileType }
+                    });
+                }
+                else {
+                    await axios.put(uploadLink, sendingFile, {
+                        headers: { "Content-Type": fileType }
+                    });
+                }
+            }
+            catch (error) {
+                console.error(error);
+                toast.error("Cannot upload file!");
+                setSendingFile("");
+            }
+            finally {
+                setWindowLoading("");
+            }
+        }
+
+        if (sendingFile === "" && !message.trim())
+            return;
+
+        const newMessage = {
+            message: message,
+            sender: userId,
+            senderProfilePic: profilePic,
+            isMe: true,
+            containsFile: sendingFile === "" ? false : true,
+            fileKey: sendingFile === "" ? null : sendingFile.name
+        };
+
+        let receivedMessage = newMessage.message;
         setChatMessages(prev => 
-            [...prev, { message: message, sender: userId, senderProfilePic: profilePic, isMe: true }]
+            [...prev, {...newMessage, message: receivedMessage}]
         );
-        let messageToSend = message;
 
         if (chatEncryption !== "none")
-            messageToSend = encrypt(messageToSend, quantumKey.current);
+            newMessage.message = await encrypt(newMessage.message, quantumKey.current);
         
-        socket.emit("sendMessage", chatRoomId, messageToSend);
+        socket.emit("sendMessage", chatRoomId, newMessage);
         setMessage("");
+        sendingFile !== "" && setSendingFile("");
+    }
+
+    function checkFileSize(file) {
+        const MAX_FILE_SIZE = 100 * 1024 * 1024;
+        if (!file)
+            return false;
+        return file.size <= MAX_FILE_SIZE;
+    }
+
+    function handleFileSelect(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!checkFileSize(file)) {
+            toast.error("File too large!");
+            e.target.value = "";
+            setSendingFile("");
+            return;
+        }
+
+        setSendingFile(file);
+    }
+
+    async function downloadFile(key) {
+        const res = await apiCaller.get("/getDownloadLink", {
+            params: { bucketName: "quchat", key, expiresInMin: chatSessionTimer }
+        });
+
+        const url = res.data.downloadLink;
+
+        const fileRes = await axios.get(url, {
+            responseType: "blob",
+        });
+
+        return fileRes.data;
+    }
+
+    async function handleDownload(key) {
+        try {
+            setWindowLoading("Downloading file...");
+            let blob = await downloadFile(key);
+
+            if (chatEncryption === "bb84")
+                blob = await decryptFile(blob, quantumKey.current);
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = key;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        }
+        catch (error) {
+            console.error(error);
+            toast.error("Cannot download file!");
+        }
+        finally {
+            setWindowLoading("");
+        }
     }
 
     function closeChatSession() {
@@ -146,7 +233,6 @@ function ChatSession() {
         else
             socket.emit("leave", chatRoomId);
         
-
         resetChatWindow();
         toast.success("Left chat session!");
     }
@@ -170,6 +256,33 @@ function ChatSession() {
             sendMessage();
         }
     };
+
+     // Auto scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chatMessages]);
+
+    // Session countdown timer
+    useEffect(() => {
+        if (!freeToChat)
+            return;
+
+        setTimeLeft(chatSessionTimer * 60);
+
+        const interval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) { 
+                    clearInterval(interval);
+                    timerEnds();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [freeToChat]);
 
     // Session securing useEffect
     useEffect(() => {
@@ -392,12 +505,13 @@ function ChatSession() {
             }
         }
 
-        socket.on("message", ({ message: msg, sender, profilePic: senderPic }) => {
-            let receivedMessage = msg;
+        socket.on("message", async (message) => {
+            let receivedMessage = message.message;
+            
             if (chatEncryption !== "none") {
-                receivedMessage = decrypt(msg, quantumKey.current);
+                receivedMessage = await decrypt(receivedMessage, quantumKey.current);
 
-                if (!receivedMessage.trim()) {
+                if (!message.containsFile && !receivedMessage.trim()) {
                     if (userId !== chatRoomId)
                         socket.emit("leave", chatRoomId);
 
@@ -408,10 +522,17 @@ function ChatSession() {
                     toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
                     resetChatWindow();
                     return;
-                } 
+                }
             }
             setChatMessages(prev => 
-                [...prev, { message: receivedMessage, sender, senderProfilePic: senderPic, isMe: false }]
+                [...prev, {
+                    message: receivedMessage,
+                    sender: message.sender, 
+                    senderProfilePic: message.profilePic, 
+                    isMe: false,
+                    containsFile: message.containsFile,
+                    fileKey: message.fileKey
+                }]
             );
         });
 
@@ -592,9 +713,41 @@ function ChatSession() {
                                                 {msg.sender}
                                             </p>
                                         )}
-                                        <p className="text-sm text-white" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
-                                            {msg.message}
-                                        </p>
+
+                                        {msg.containsFile ? (
+                                            <>
+                                                {msg.message && (
+                                                    <p className="text-sm text-white mb-1" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
+                                                        {msg.message}
+                                                    </p>
+                                                )}
+
+                                                {isMe ? (
+                                                    <p className="text-sm text-white" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
+                                                        {msg.fileKey || 'File'}
+                                                    </p>
+                                                ) : (
+                                                    <div className="flex items-center justify-between gap-3" style={{ minWidth: 180 }}>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-sm text-white font-semibold truncate" style={{ lineHeight: 1.2 }}>
+                                                                {msg.fileKey || 'File'}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleDownload(msg.fileKey)}
+                                                            className="px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+                                                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(33,150,243,0.12)", color: "#2196F3" }}
+                                                        >
+                                                            Download
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <p className="text-sm text-white" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
+                                                {msg.message}
+                                            </p>
+                                        )}
                                         {chatEncryption !== "none" && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={isMe ? "rgba(255,255,255,0.5)" : "rgba(33,150,243,0.5)"} strokeWidth="2">
@@ -617,6 +770,47 @@ function ChatSession() {
                         <div className="px-4 py-3 shrink-0"
                             style={{ borderTop: "1px solid rgba(33,150,243,0.08)", background: "rgba(9,21,26,0.9)" }}>
                             <div className="flex items-center gap-3">
+                                <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*" onChange={handleFileSelect} style={{ display: "none" }} />
+
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-11 h-11 flex items-center justify-center rounded-xl transition-all shrink-0"
+                                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(33,150,243,0.12)", color: "#2196F3" }}
+                                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="3" width="14" height="14" rx="2" />
+                                        <path d="M8 14l2.5-3 3.5 4" />
+                                        <circle cx="18" cy="6" r="2" />
+                                        <line x1="18" y1="4" x2="18" y2="8" />
+                                        <line x1="16" y1="6" x2="20" y2="6" />
+                                    </svg>
+                                </button>
+
+                                {sendingFile && (
+                                    <div className="flex items-center gap-2 px-3 py-1 rounded-full shrink-0"
+                                        style={{ background: "rgba(33,150,243,0.12)", border: "1px solid rgba(33,150,243,0.18)" }}>
+                                        <p className="text-sm truncate" style={{ color: "#2196F3", maxWidth: 180, margin: 0 }}>{sendingFile.name}</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSendingFile("");
+                                                if (fileInputRef.current) fileInputRef.current.value = "";
+                                            }}
+                                            className="flex items-center justify-center w-6 h-6 rounded-full transition-all"
+                                            style={{ background: "transparent", color: "#2196F3", border: "none" }}
+                                            aria-label="Remove file"
+                                        >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2196F3" strokeWidth="2">
+                                                <line x1="18" y1="6" x2="6" y2="18" />
+                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
+
                                 <input
                                     type="text"
                                     value={message}
@@ -634,13 +828,13 @@ function ChatSession() {
                                 />
                                 <button
                                     onClick={sendMessage}
-                                    disabled={!message.trim()}
+                                    disabled={sendingFile === "" && !message.trim()}
                                     className="w-11 h-11 flex items-center justify-center rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                     style={{
                                         background: "linear-gradient(135deg, #2196F3, #1565C0)",
                                         boxShadow: "0 0 16px rgba(33,150,243,0.3)"
                                     }}
-                                    onMouseEnter={e => { if (message.trim()) e.currentTarget.style.boxShadow = "0 0 24px rgba(33,150,243,0.5)"; }}
+                                    onMouseEnter={e => { if (message.trim() || sendingFile) e.currentTarget.style.boxShadow = "0 0 24px rgba(33,150,243,0.5)"; }}
                                     onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(33,150,243,0.3)"}
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
