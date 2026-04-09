@@ -598,6 +598,9 @@ function ChatSession() {
                 catch {
                     toast.info("Could not delete all files sent by you!");
                 }
+                finally {
+                    setFilesSentByMe([]);
+                }
             })();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
