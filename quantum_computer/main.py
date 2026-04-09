@@ -29,8 +29,8 @@ origins = []
 if os.getenv("PROD") == "true":
     origins.append(os.getenv("SERVER_ADDR"))
 else:
-    origins.append("https://localhost:8595")
-    origins.append("https://localhost:8596")
+    origins.append("http://localhost:8595")
+    origins.append("http://localhost:8596")
     
 app.add_middleware(
     CORSMiddleware,
