@@ -19,17 +19,16 @@ function OnboardPage() {
 
     const navigate = useNavigate();
 
-    // Only redirect if already logged in — no toast here
     useEffect(() => {
         const token = localStorage.getItem("access-token");
-        if (!token) return; // No token, stay on onboard
+        if (!token)
+            return;
 
         apiCaller.get("/verify")
             .then(() => {
                 navigate("/");
             })
             .catch(() => {
-                // Token invalid/expired — stay on onboard, no toast
                 localStorage.removeItem("access-token");
             });
     }, [navigate]);
@@ -44,14 +43,16 @@ function OnboardPage() {
             const response = await authCaller.post("/login", { username, password });
             localStorage.setItem("access-token", `Bearer ${response.data.accessToken}`);
             navigate("/");
-        } catch (error) {
+        }
+        catch (error) {
             if (error.response?.status === 409)
                 toast.error("User is already logged in!");
             else if (error.response?.status === 400)
                 toast.error("Invalid credentials!");
             else
                 toast.error("Unexpected error occurred!");
-        } finally {
+        }
+        finally {
             setUsername("");
             setPassword("");
             setWindowLoading(false);
@@ -68,12 +69,14 @@ function OnboardPage() {
             await authCaller.post("/signup", { username, password });
             toast.success("Account created! Please log in.");
             setIsLogin(true);
-        } catch (error) {
+        }
+        catch (error) {
             if (error.response?.status === 400)
                 toast.error("Username already exists!");
             else
                 toast.error("Unexpected error occurred!");
-        } finally {
+        }
+        finally {
             setUsername("");
             setPassword("");
             setWindowLoading(false);
