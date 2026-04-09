@@ -7,6 +7,7 @@ import apiRouter from "./routes/api.route.js";
 import socketInit from "./io.index.js";
 import { Server } from "socket.io";
 import cors from "cors";
+import { S3Client } from "@aws-sdk/client-s3";
 
 const SERVER_PORT = 8596;
 const IO_PORT = 8597;
@@ -21,6 +22,14 @@ const io = new Server(IO_PORT, {
 
 const redisClient = await redisConnect();
 mongoConnect();
+const r2Client = new S3Client({
+    region: "auto", 
+    endpoint: process.env.R2_ENDPOINT,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    }
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -40,4 +49,4 @@ app.listen(SERVER_PORT, () => {
     console.log(`App started on PORT ${SERVER_PORT}`);
 });
 
-export { io, redisClient };
+export { io, redisClient, r2Client };
