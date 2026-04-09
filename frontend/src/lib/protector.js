@@ -34,13 +34,18 @@ export const decrypt = async (cipherText, cryptoKey) => {
     const iv = data.slice(0, 12);
     const encrypted = data.slice(12);
 
-    const decrypted = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
-        cryptoKey,
-        encrypted
-    );
+    try {
+        const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            cryptoKey,
+            encrypted
+        );
 
-    return new TextDecoder().decode(decrypted);
+        return new TextDecoder().decode(decrypted);
+    }
+    catch {
+        return "";
+    }
 };
 
 export const encryptFile = async (fileBlob, key) => {
@@ -66,10 +71,15 @@ export const decryptFile = async (encryptedBlob, key) => {
     const iv = data.slice(0, 12);
     const encrypted = data.slice(12);
 
-    const decryptedBuffer = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
-        key, encrypted
-    );
+    try {
+        const decryptedBuffer = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            key, encrypted
+        );
 
-    return new Blob([decryptedBuffer]);
+        return new Blob([decryptedBuffer]);
+    }
+    catch {
+        return null;
+    }
 };
