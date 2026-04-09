@@ -9,7 +9,6 @@ import Header from "../components/HomeComponents/Header";
 import OnlineUsers from "../components/HomeComponents/OnlineUsers";
 import ChatWindow from "../components/HomeComponents/ChatWindow";
 import WindowLoading from "../components/GeneralComponents/WindowLoading";
-import ConfirmDialogBox from "../components/GeneralComponents/ConfirmDialogBox";
 import ExitPageWarning from "../components/GeneralComponents/ExitPageWarning";
 
 function HomePage() {
@@ -40,9 +39,8 @@ function HomePage() {
     const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
     const [windowLoading, setWindowLoading] = useState("");
     const [showTimer, setShowTimer] = useState(-1);
-    const [showConfirmDialogBox, setShowConfirmDialogBox] = useState("");
     const generalComponentStates = {
-        setWindowLoading, showTimer, setShowTimer, setShowConfirmDialogBox
+        setWindowLoading, showTimer, setShowTimer
     };
 
     const [chatSessionTimer, setChatSessionTimer] = useState(-1);
@@ -100,7 +98,7 @@ function HomePage() {
 
     useEffect(() => {
         if (userId) {
-            const socket = io(import.meta.env.VITE_IO_ADDR || "http://localhost:8597", {
+            const socket = io({
                 auth: { token: localStorage.getItem("access-token")?.split(" ")[1] }
             });
             socketRef.current = socket;
@@ -262,7 +260,6 @@ function HomePage() {
             {/* Overlays — outside layout div but inside provider */}
             {alreadyLoggedIn && <ExitPageWarning />}
             {windowLoading !== "" && <WindowLoading message={windowLoading} />}
-            {showConfirmDialogBox !== "" && <ConfirmDialogBox message={showConfirmDialogBox} />}
 
         </HomeContext.Provider>
     );
