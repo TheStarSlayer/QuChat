@@ -100,28 +100,160 @@ Frontend (`frontend/.env`):
 
 Note: many examples in the code expect these environment variables; inspect `backend/index.js`, `quantum_computer/main.py`, and `frontend/src/lib/api.js` for exact usage.
 
-## API endpoints (high level)
+## API Endpoints (detailed)
 
-Auth (`/auth`):
+### Auth Endpoints
 
-- `POST /auth/signup` — create account
-- `POST /auth/login` — returns `{ accessToken }` and sets `refreshToken` cookie
-- `POST /auth/refresh` — exchange cookie for new access token
-- `POST /auth/logout` — clear refresh cookie
+- **POST /auth/signup**
+  - Description: Create a new user account.
+  - Request body: `{ "username": string, "password": string }`.
+  - Responses: `201` on success; `400` if username exists or user already logged in; `500` on server error.
+  - Implementation: `signupController` in [backend/controllers/auth.controller.js](backend/controllers/auth.controller.js). Route: [backend/routes/auth.route.js](backend/routes/auth.route.js).
 
-Application API (`/api/*`) — protected by access token via `Authorization: Bearer <token>` header:
+- **POST /auth/login**
+  - Description: Authenticate user credentials and start a session.
+  - Request body: `{ "username": string, "password": string }`.
+  - Behavior: Prevents concurrent logins, returns a short-lived `accessToken` in the JSON response and sets an `httpOnly` `refreshToken` cookie (cookie options configured in `auth.controller.js`).
+  - Responses: `200` with `{ accessToken }` and cookie on success; `400` for invalid credentials; `409` if the user is already logged in; `500` on server error.
+  - Implementation: `loginController` in [backend/controllers/auth.controller.js](backend/controllers/auth.controller.js). Route: [backend/routes/auth.route.js](backend/routes/auth.route.js).
 
-- `GET /api/verify` — check token
-- `GET /api/getOnlineUsers` — list other online users
-- `PATCH /api/setToBusy` / `PATCH /api/setToAvailable` — update availability
-- Request management: `POST /api/persistRequest`, `GET /api/getMyActiveRequests`, `GET /api/getEavesdroppableRequests`, `PATCH /api/finishRequest`, `PATCH /api/eavesdrop/:roomId`
+- **POST /auth/refresh**
+  - Description: Rotate refresh token (sent via `refreshToken` cookie) and return a new `accessToken`.
+  - Behavior: Verifies cookie, rotates both access and refresh tokens, updates stored hash for the refresh token in the database and sets a new cookie.
+  - Responses: `200` with `{ accessToken }` on success; `401`/`400` on token problems; `500` on server error.
+  - Implementation: `refreshController` in [backend/controllers/auth.controller.js](backend/controllers/auth.controller.js). Route: [backend/routes/auth.route.js](backend/routes/auth.route.js).
 
-File operations (signed links):
+- **POST /auth/logout**
+  - Description: Clear the `refreshToken` cookie and remove the stored refresh token for the user.
+  - Responses: `200` on success; `400` if no refresh cookie present; `500` on server error.
+  - Implementation: `logoutController` in [backend/controllers/auth.controller.js](backend/controllers/auth.controller.js). Route: [backend/routes/auth.route.js](backend/routes/auth.route.js).
 
-- `GET /api/getUploadLink?bucketName=quchat&key=<fileKey>&fileType=<mime>` — returns a signed URL to `PUT` the file to R2. The backend `getUploadLink` uses an 80-second expiry for upload links.
-- `GET /api/getDownloadLink?bucketName=quchat&key=<fileKey>&expiresInMin=<minutes>` — returns a signed URL valid for `expiresInMin` minutes to `GET` the file.
+---
 
-The frontend uses these signed URLs for direct client-side uploads/downloads (no file is proxied through the backend). When `bb84` encryption is in use the frontend encrypts files client-side before uploading.
+### Protected Application API
+
+All routes under `/api` require an `Authorization: Bearer <accessToken>` header. The token verification middleware is `apiVerify` in [backend/middleware/api.middleware.js](backend/middleware/api.middleware.js).
+
+- **GET /api/verify**
+  - Description: Verify access token and return the authenticated `userId`.
+  - Responses: `200` with `{ userId }`.
+  - Implementation: `verifyAccessTokenController` in [backend/controllers/actions.api.controller.js](backend/controllers/actions.api.controller.js).
+
+- **GET /api/getOnlineUsers**
+  - Description: Return the list of currently-available users (excludes the caller).
+  - Responses: `200` with `{ onlineUsers }`; `500` on server error.
+  - Implementation: `getOnlineUsersController` in [backend/controllers/actions.api.controller.js](backend/controllers/actions.api.controller.js).
+
+- **PATCH /api/setToBusy**
+  - Description: Mark the caller as busy, remove from online index and broadcast `userLeft` via Socket.IO.
+  - Responses: `200` on success; `500` on server error.
+  - Implementation: `setToBusyController` in [backend/controllers/actions.api.controller.js](backend/controllers/actions.api.controller.js).
+
+- **PATCH /api/setToAvailable**
+  - Description: Mark the caller available, add to online index and broadcast `newUser` (includes a generated avatar URL).
+  - Responses: `200` on success; `500` on server error.
+  - Implementation: `setToAvailableController` in [backend/controllers/actions.api.controller.js](backend/controllers/actions.api.controller.js).
+
+---
+
+### Request / Eavesdrop Flow
+
+These endpoints implement the request lifecycle used by the chat UI and the eavesdrop discovery flow.
+
+- **POST /api/persistRequest**
+  - Description: Sender creates a pending request to join another user.
+  - Request body: `{ receiverId, timeLimitInMs, typeOfEncryption, chatSessionTimeInMin, isSimulator }` (sender is inferred from the access token).
+  - Behavior: Verifies receiver availability, prevents duplicate requests, persists the request in MongoDB, indexes/cache entries in Redis, and emits the `requestForED` Socket.IO event for eavesdroppers.
+  - Responses: `200` with `{ msg, newRequestPublic }` on success; `404` if receiver unavailable; `409` for duplicate request; `500` on server error.
+  - Implementation: `persistRequestController` in [backend/controllers/request.api.controller.js](backend/controllers/request.api.controller.js).
+
+- **GET /api/getMyActiveRequests**
+  - Description: Return pending requests addressed to the caller (the receiver).
+  - Responses: `200` with an array of request summaries; `500` on server error.
+  - Implementation: `getMyActiveRequestsController` in [backend/controllers/request.api.controller.js](backend/controllers/request.api.controller.js).
+
+- **GET /api/getEavesdroppableRequests**
+  - Description: Return pending requests that other users can eavesdrop on (excludes requests involving the caller).
+  - Responses: `200` with an array of request summaries; `500` on server error.
+  - Implementation: `eavesdroppableRequestsController` in [backend/controllers/request.api.controller.js](backend/controllers/request.api.controller.js).
+
+- **PATCH /api/eavesdrop/:roomId**
+  - Description: Claim a pending request as an eavesdropper (`:roomId` is the sender id of the request).
+  - Behavior: Atomically mark the request as eavesdropped, update Redis indices, and emit `removeRequestForED` to update UIs.
+  - Responses: `200` on success; `404` if cannot eavesdrop; `500` on server error.
+  - Implementation: `eavesdropController` in [backend/controllers/request.api.controller.js](backend/controllers/request.api.controller.js).
+
+- **PATCH /api/finishRequest**
+  - Description: Finalize or cancel a pending request. Body: `{ finishStatus }` (e.g., `accepted`, `cancelled`, etc.).
+  - Behavior: Updates DB status, clears Redis indices, and emits `removeRequest` via Socket.IO.
+  - Responses: `204` on success; `500` on error.
+  - Implementation: `finishRequestController` in [backend/controllers/request.api.controller.js](backend/controllers/request.api.controller.js) which uses `lib/finishRequest.js`.
+
+---
+
+### File operations (signed links)
+
+File upload/download endpoints return pre-signed URLs so the browser can PUT/GET directly to an S3-compatible R2 bucket. Signing and deletion helpers live in [backend/lib/R2Actions.js](backend/lib/R2Actions.js).
+
+- **GET /api/getUploadLink?bucketName=&key=&fileType=**
+  - Description: Returns a pre-signed `PUT` URL for client-side uploads. Server signs uploads with an 80-second expiry.
+  - Query params: `bucketName`, `key`, `fileType` (mime type).
+  - Responses: `200` with `{ uploadLink }`; `500` on server error.
+  - Implementation: `getUploadLinkController` in [backend/controllers/file.api.controller.js](backend/controllers/file.api.controller.js).
+
+- **GET /api/getDownloadLink?bucketName=&key=&expiresInMin=**
+  - Description: Returns a pre-signed `GET` URL valid for the specified number of minutes.
+  - Query params: `bucketName`, `key`, `expiresInMin`.
+  - Responses: `200` with `{ downloadLink }`; `500` on server error.
+  - Implementation: `getDownloadLinkController` in [backend/controllers/file.api.controller.js](backend/controllers/file.api.controller.js).
+
+- **DELETE /api/deleteObjects**
+  - Description: Delete one or more objects from a bucket.
+  - Request body: `{ bucketName, keys }`.
+  - Responses: `204` on success; `500` on server error.
+  - Implementation: `deleteObjectsController` in [backend/controllers/file.api.controller.js](backend/controllers/file.api.controller.js).
+
+The frontend requests an upload link and then PUTs the (optionally encrypted) file bytes directly to R2 — no proxy through the backend.
+
+---
+
+### Quantum / QKD Service (FastAPI)
+
+The Quantum service runs under `quantum_computer/main.py` and exposes RNG and BB84-style key distribution endpoints used during secure session setup. See [quantum_computer/main.py](quantum_computer/main.py).
+
+- **GET /rng/{typeOfMachine}**
+  - Params: `typeOfMachine` = `sim` or `hw`. Query: `bit_length` (default 156), `no_of_shots` (default 1).
+  - Description: Return quantum measurement bitstrings (used as randomness).
+
+- **GET /getRandomIndices/{typeOfMachine}?keyLength=**
+  - Description: Return a set of random indices (used for QKD subset selection). This endpoint is protected by the service middleware.
+  - Responses: `200` with `{ randIndices: [...] }`; `400` if `keyLength >= 512`.
+
+- **GET /distributeRawKey/{roomId}**
+  - Description: Orchestrates raw key distribution for a given chat room. The endpoint is protected (expects a `Authorization: Bearer <token>` header checked against `ACCESS_TOKEN_SECRET`).
+  - Behavior: If caller is the sender, generate and persist sender metadata (bases/bits) and return them. If caller is the receiver or an eavesdropper, retrieve metadata, generate receiver bases, run the BB84 circuit and return observed bits. Handles concurrency and may return `425` for "call again later" while metadata is generating.
+
+- **GET /generateAndRunBB84Circuit**
+  - Description: Run a BB84-style circuit with provided `sender_bits`, `sender_bases`, `receiver_bases` and return observed bits. Used internally and also callable directly.
+
+- **DELETE /deleteMetadata/{roomId}**
+  - Description: Delete stored circuit metadata for a room. Protected by service middleware.
+
+Notes: Authentication middleware in `main.py` only enforces a bearer token for specific endpoints (e.g., `distributeRawKey`, `deleteMetadata`, `getRandomIndices`). Review `quantum_computer/main.py` for exact behavior.
+
+---
+
+### Socket.IO events (summary)
+
+Real-time signaling and QKD coordination use Socket.IO. The socket initialization is in [backend/io.index.js](backend/io.index.js) and event handlers live in [backend/lib/socketEventLib.js](backend/lib/socketEventLib.js).
+
+Client -> Server (examples): `sendJoinRequest`, `eavesdropRequest`, `accept`, `shareBases`, `calculateQBER`, `shareQBERResult`, `sendMessage`, `leave`, `sessionEnd`, etc.
+
+Server -> Client (examples): `newUser`, `userLeft`, `requestForED`, `removeRequestForED`, `removeRequest`, `requestToJoin`, `bases`, `qber`, `qberResult`, `message`, `keyGenFailed`, `sessionDisturbed`, `sessionEnd`.
+
+Socket handshake: pass the access token in the auth handshake, e.g. `io('http://localhost:8597', { auth: { token } })`.
+
+For implementation details and the full list of events, see [backend/io.index.js](backend/io.index.js) and [backend/lib/socketEventLib.js](backend/lib/socketEventLib.js).
 
 ## Encryption and QKD (implementation notes)
 
