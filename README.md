@@ -13,11 +13,15 @@ This README documents how the pieces fit together, required environment variable
 ## Ports (development)
 
 - Frontend (Vite dev server): <http://localhost:8595>
-- Backend (Express HTTP API): <http://localhost:8596>
-- Socket.IO server (Socket.IO server created in backend): <http://localhost:8597>
+- Backend + Socket.io (Express HTTP API): <http://localhost:8596>
 - Quantum / QKD service (FastAPI / Uvicorn): <http://localhost:8598>
 
 These ports are the defaults used in the code and CORS configuration. If you change ports, update the corresponding env variables (`FRONTEND_ADDR`, `SERVER_ADDR`, `IO_ADDR`) used by the services.
+
+## Domains (production)
+
+- Frontend + Backend + Socket.io: <https://quchat-iu40.onrender.com>
+- Quantum / QKD Service: <https://quantum-service-abgj.onrender.com>
 
 ## Quick architecture summary
 
@@ -66,7 +70,7 @@ cd quantum_computer
 python -m venv .venv
 .venv\Scripts\Activate.ps1   # Windows (PowerShell)
 pip install -r requirements.txt
-python -u main.py
+uvicorn main:app --host "localhost" --port "8598"
 ```
 
 Adjust commands as needed for your environment.
@@ -77,9 +81,7 @@ Backend (`backend/.env` or system env):
 
 - `MONGODB_CONN` — MongoDB connection string.
 - `REDIS_PASSWORD` — Redis password (if your Redis instance uses one).
-- `FRONTEND_ADDR` — origin allowed by CORS for frontend (e.g., `http://localhost:8595`).
-- `SERVER_ADDR` — backend server origin (e.g., `http://localhost:8596`).
-- `IO_ADDR` — Socket.IO origin (e.g., `http://localhost:8597`).
+- `QC_ADDR` — <https://quantum-service-abgj.onrender.com>
 - `R2_ENDPOINT` — S3/R2 endpoint URL (required for file signed links).
 - `R2_ACCESS_KEY` — S3/R2 access key.
 - `R2_SECRET_ACCESS_KEY` — S3/R2 secret key.
@@ -92,11 +94,8 @@ Quantum service (`quantum_computer/.env`):
 
 - `QC_API_KEY` — if using IBM Qiskit runtime.
 - `ACCESS_TOKEN_SECRET` — shared JWT secret used to authorize certain QC calls (keep in sync with backend if you require QC route authorization).
-- `FRONTEND_ADDR` / `SERVER_ADDR` — origins for CORS.
-
-Frontend (`frontend/.env`):
-
-- `VITE_API_BASE` or similar (depending on your `frontend/src/lib/api.js` configuration) — point to `http://localhost:8596` in dev.
+- `SERVER_ADDR` — origins for CORS (<https://quchat-iu40.onrender.com>)
+- `PROD` — Decides origins for CORS
 
 Note: many examples in the code expect these environment variables; inspect `backend/index.js`, `quantum_computer/main.py`, and `frontend/src/lib/api.js` for exact usage.
 
@@ -280,7 +279,7 @@ Below are the Socket.IO events used by the server and clients. See `backend/io.i
 Clients must attach the access token in the socket handshake, for example:
 
 ```js
-io('http://localhost:8597', { auth: { token } })
+io({ auth: { token } })
 ```
 
 Client -> Server (events the client emits):
