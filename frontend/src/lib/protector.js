@@ -1,13 +1,75 @@
-import CryptoJS from "crypto-js";
+export const getAESKey = async (key) => {
+    const encoder = new TextEncoder();
+    const hashedKey = await crypto.subtle.digest("SHA-256", encoder.encode(key));
 
-export const encrypt = (text, key) => {
-    return CryptoJS.AES.encrypt(text, key).toString();
-};
-
-export const decrypt = (cipher, key) => {
-    return CryptoJS.AES.decrypt(cipher, key).toString(CryptoJS.enc.Utf8);
-};
-
-export const privacyAmplification = (key) => {
-    return CryptoJS.SHA256(key).toString();
+    return await crypto.subtle.importKey(
+        "raw", hashedKey, "AES-GCM", false, ["encrypt", "decrypt"]
+    );
 }
+
+export const encrypt = async (text, cryptoKey) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        cryptoKey,
+        data
+    );
+
+    // combine IV + encrypted
+    const result = new Uint8Array(iv.length + encrypted.byteLength);
+    result.set(iv, 0);
+    result.set(new Uint8Array(encrypted), iv.length);
+
+    return btoa(String.fromCharCode(...result)); // base64 for storage
+};
+
+export const decrypt = async (cipherText, cryptoKey) => {
+    const binary = atob(cipherText);
+    const data = Uint8Array.from(binary, c => c.charCodeAt(0));
+
+    const iv = data.slice(0, 12);
+    const encrypted = data.slice(12);
+
+    const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        cryptoKey,
+        encrypted
+    );
+
+    return new TextDecoder().decode(decrypted);
+};
+
+export const encryptFile = async (fileBlob, key) => {
+    const fileBuffer = await fileBlob.arrayBuffer();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    
+    const encryptedBuffer = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        key, fileBuffer
+    );
+
+    const result = new Uint8Array(iv.length + encryptedBuffer.byteLength);
+    result.set(iv, 0);
+    result.set(new Uint8Array(encryptedBuffer), iv.length);
+
+    return result;
+};
+
+export const decryptFile = async (encryptedBlob, key) => {
+    const buffer = await encryptedBlob.arrayBuffer();
+    const data = new Uint8Array(buffer);
+
+    const iv = data.slice(0, 12);
+    const encrypted = data.slice(12);
+
+    const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        key, encrypted
+    );
+
+    return new Blob([decryptedBuffer]);
+};
