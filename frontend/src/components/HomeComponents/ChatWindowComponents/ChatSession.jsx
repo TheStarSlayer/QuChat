@@ -201,8 +201,12 @@ function ChatSession() {
             setWindowLoading("Downloading file...");
             let blob = await downloadFile(key);
 
-            if (chatEncryption === "bb84")
+            if (chatEncryption === "bb84") {
                 blob = await decryptFile(blob, quantumKey.current);
+                if (blob === null) {
+                    throw new Error("Failed to decrypt file!");
+                }
+            }
 
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
