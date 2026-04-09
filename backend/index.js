@@ -8,17 +8,21 @@ import socketInit from "./io.index.js";
 import { Server } from "socket.io";
 import cors from "cors";
 import { S3Client } from "@aws-sdk/client-s3";
+import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const SERVER_PORT = 8596;
-const IO_PORT = 8597;
+const SERVER_PORT = process.env.PORT || 3000;
 
 const app = express();
-
-const io = new Server(IO_PORT, {
+const server = http.createServer(app);
+const io = new Server(server, {
     cors: {
-        origin: [process.env.FRONTEND_ADDR, process.env.SERVER_ADDR]
+        origin: [process.env.FRONTEND_ADDR,],
+        credentials: true
     }
 });
+socketInit(io);
 
 const redisClient = await redisConnect();
 mongoConnect();
@@ -31,21 +35,31 @@ const r2Client = new S3Client({
     }
 });
 
+app.use(cors({
+    origin: [process.env.FRONTEND_ADDR,],
+    credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use(cors({
-    origin: [process.env.FRONTEND_ADDR, process.env.IO_ADDR],
-    credentials: true
-}));
-
 app.use("/auth", authRouter);
 app.use("/api", apiRouter);
 
-socketInit(io);
+// serve frontend
+if (process.env.PROD === "true") {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    app.use(express.static(path.join(__dirname, "dist")));
 
-app.listen(SERVER_PORT, () => {
+    app.get((_, res) => {
+        res.sendFile(path.join(__dirname, "dist", "index.html"));
+    });
+}
+
+server.listen(SERVER_PORT, () => {
     console.log(`App started on PORT ${SERVER_PORT}`);
 });
 
