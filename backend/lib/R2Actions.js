@@ -7,9 +7,8 @@ import {
 
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export const deleteObjects = async ({ bucketName, keys }) => {
+export const deleteObjects = async (bucketName, keys) => {
     try {
-
         await r2Client.send(
             new DeleteObjectsCommand({
                 Bucket: bucketName,
@@ -19,13 +18,7 @@ export const deleteObjects = async ({ bucketName, keys }) => {
             }),
         );
 
-        for (const key in keys) {
-            await waitUntilObjectNotExists(
-                { r2Client },
-                { Bucket: bucketName, Key: key },
-            );
-        }
-
+        console.log("Deleted files successfully!");
         return true;
     }
     catch (error) {
@@ -39,6 +32,7 @@ export const deleteObjects = async ({ bucketName, keys }) => {
                 `Error from S3 while deleting objects from ${bucketName}.  ${error.name}: ${error.message}`,
             );
         }
+        console.error(error);
         return false;
     }
 };
