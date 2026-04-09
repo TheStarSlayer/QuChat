@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
+    "build": "cd ../frontend && npm run build && mv dist ../backend/ && cd ../backend && docker build -t quchat . && docker tag quchat thestarslayer/quchat:latest && docker push thestarslayer/quchat:latest",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
