@@ -22,6 +22,7 @@ function ChatSession() {
     const [message, setMessage] = useState("");
     const [timeLeft, setTimeLeft] = useState(chatSessionTimer * 60);
     const [sendingFile, setSendingFile] = useState("");
+    const [filesSentByMe, setFilesSentByMe] = useState([]);
 
     const qkeyBases = useRef("");
     const qkeyBits = useRef("");
@@ -102,13 +103,6 @@ function ChatSession() {
         if (sendingFile !== "") {
             setWindowLoading("Uploading file...");
 
-            // Validate file size before attempting upload
-            if (!checkFileSize(sendingFile)) {
-                toast.error("File too large!");
-                setSendingFile("");
-                return;
-            }
-
             const key = sendingFile.name;
             const fileType = sendingFile.type;
             try {
@@ -128,6 +122,8 @@ function ChatSession() {
                         headers: { "Content-Type": fileType }
                     });
                 }
+
+                setFilesSentByMe(prev => [...prev, key]);
             }
             catch (error) {
                 console.error(error);
@@ -586,6 +582,21 @@ function ChatSession() {
                     await apiCaller.patch("/setToAvailable");
                     toast.info("You are now available for requests!");
                     isSetToBusy.current = false;
+                }
+            })();
+
+            (async () => {
+                try {
+                    if (filesSentByMe.length > 0) {
+                        await apiCaller.delete("/deleteObjects", {
+                            bucketName: "quchat",
+                            keys: filesSentByMe
+                        });
+                        toast.success("All files sent by you are no longer stored online!");
+                    }
+                }
+                catch {
+                    toast.info("Could not delete all files sent by you!");
                 }
             })();
         };
