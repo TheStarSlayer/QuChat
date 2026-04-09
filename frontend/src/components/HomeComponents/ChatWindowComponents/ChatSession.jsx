@@ -591,6 +591,7 @@ function ChatSession() {
                         await apiCaller.delete("/deleteObjects", {
                             data: {
                                 bucketName: "quchat",
+                                // eslint-disable-next-line react-hooks/exhaustive-deps
                                 keys: filesSentByMe.current
                             }
                         });
