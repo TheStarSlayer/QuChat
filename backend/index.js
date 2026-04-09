@@ -12,13 +12,13 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const SERVER_PORT = process.env.PORT || 3000;
+const SERVER_PORT = process.env.PORT || 8596;
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: [process.env.FRONTEND_ADDR,],
+        origin: ["http://localhost:8595",],
         credentials: true
     }
 });

@@ -204,7 +204,8 @@ export const socketDisconnectEvent = async (socket) => {
             socket.to(socket.ackWaitSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
 
             if (socket.userId == socket.ackWaitSession) {
-                const res = fetch(`${process.env.QC_ADDR}/deleteMetadata/${socket.ackWaitSession}`, {
+                const qcAddr = process.env.PROD === "true" ? process.env.QC_ADDR : "http://localhost:8598";
+                const res = fetch(`${qcAddr}/deleteMetadata/${socket.ackWaitSession}`, {
                     method: "DELETE",
                     headers: {
                         "Authorization": `Bearer ${socket.handshake.auth.token}`

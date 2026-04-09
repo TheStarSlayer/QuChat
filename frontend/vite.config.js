@@ -11,11 +11,18 @@ export default ({ mode }) => {
         server: { 
             port: 8595,
             proxy: {
-                "/auth": `${env.SERVER_ADDR}/auth`,
-                "/api": `${env.SERVER_ADDR}/api`,
+                "/auth": {
+                    target: "http://localhost:8596",
+                    changeOrigin: true
+                },
+                "/api": {
+                    target: "http://localhost:8596",
+                    changeOrigin: true
+                },
                 "/socket.io": {
-                    target: `${env.SERVER_ADDR}`,
-                    ws: true
+                    target: "http://localhost:8596",
+                    ws: true,
+                    changeOrigin: true
                 }
             }
         }

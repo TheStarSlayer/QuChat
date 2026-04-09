@@ -25,10 +25,13 @@ app = FastAPI()
 
 powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
-origins = [
-    os.getenv("SERVER_ADDR"),
-]
-
+origins = []
+if os.getenv("PROD") == "true":
+    origins.append(os.getenv("SERVER_ADDR"))
+else:
+    origins.append("https://localhost:8595")
+    origins.append("https://localhost:8596")
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

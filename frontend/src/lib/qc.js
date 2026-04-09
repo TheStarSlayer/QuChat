@@ -1,7 +1,8 @@
 import axios from "axios";
 import authCaller from "./auth";
 
-const server = import.meta.env.VITE_QC_ADDR;
+const prod = import.meta.env.VITE_PROD;
+const server = prod === "true" ? import.meta.env.VITE_QC_ADDR : "http://localhost:8598";
 
 const qcCaller = axios.create({
     baseURL: server,
