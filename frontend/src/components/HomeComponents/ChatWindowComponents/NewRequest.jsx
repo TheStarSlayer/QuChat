@@ -45,16 +45,7 @@ function NewRequest() {
             setWindowLoading("");
 
             timeoutId.current = setTimeout(async () => {
-                setShowTimer(-1);
-                socket.off("response");
                 resetChatWindow();
-                toast.info("Request timed out!");
-                try {
-                    await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
-                }
-                catch {
-                    toast.error("Could not close request successfully!");
-                }
             }, timeLimitInSec * 1000);
 
             socket.once("response", async (response) => {
@@ -119,6 +110,7 @@ function NewRequest() {
                     toast.info("Request timed out!");
                     try {
                         await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                        toast.info("Request closed successfully!");
                     }
                     catch {
                         toast.error("Could not close request successfully!");
