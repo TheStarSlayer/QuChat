@@ -234,7 +234,8 @@ function ChatSession() {
         else
             socket.emit("leave", chatRoomId);
         
-        resetChatWindow();
+        setWindowLoading("Exiting!");
+        setTimeout(() => resetChatWindow(), 1000);
         toast.success("Left chat session!");
     }
 
