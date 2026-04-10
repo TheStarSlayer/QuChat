@@ -194,14 +194,47 @@ export const socketDisconnectEvent = async (socket) => {
         await redisClient.zRem("onlineUsers", socket.userId);
 
         if (socket.responseWaitSession) {
-            socket.to(socket.userId).emit("requestFailed", "Host disconnected");
-            socket.to(socket.responseWaitSession).emit("requestFailed", "Host disconnected");
-            await finishRequest(socket.userId, "cancelled");
+            if (!socket.eavesdropper) {
+                socket.to(socket.responseWaitSession).emit("requestFailed", "Host disconnected");               
+                await finishRequest(socket.userId, "cancelled");
+            }
+            else {
+                const senderId = socket.eavesdropper;
+                const eavesdropperId = socket.userId;
+
+                try {
+                    const findFilter = {
+                        eavesdropper: true,
+                        eavesdropperId: eavesdropperId,
+                        sender: senderId,
+                        status: "pending"
+                    };
+                    const updateFilter = { eavesdropper: false, eavesdropperId: null };
+                    await RequestModel.findOneAndUpdate(findFilter, updateFilter);
+
+                    const updatedRequest = JSON.parse(await redisClient.get(`requester:${senderId}`));
+                    updatedRequest.eavesdropper = false;
+                    updatedRequest.eavesdropperId = null;
+
+                    const createdOn = updatedRequest.createdOn;
+
+                    await redisClient.multi()
+                        .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
+                        .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
+                        .exec();
+
+                    console.log(await redisClient.get(`requester:${senderId}`));
+                    console.log(await redisClient.zRange('EDRequestIndex', 0, -1));
+                }
+                catch (err) {
+                    console.error(err);
+                }
+            }
         }
 
         if (socket.keyGenSession) {
             // Host calls deleteMetadata(roomId)
-            socket.to(socket.ackWaitSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
+            socket.to(socket.keyGenSession).emit("keyGenFailed", "Key Generation failed due to disturbed session");
 
             if (socket.userId == socket.ackWaitSession) {
                 const qcAddr = process.env.PROD === "true" ? process.env.QC_ADDR : "http://localhost:8598";
@@ -218,38 +251,8 @@ export const socketDisconnectEvent = async (socket) => {
             }
         }
 
-        if (socket.eavesdropper && socket.responseWaitSession) {
-            const senderId = socket.eavesdropper;
-            const eavesdropperId = socket.userId;
-
-            try {
-                const findFilter = {
-                    eavesdropper: true,
-                    eavesdropperId: eavesdropperId,
-                    sender: senderId,
-                    status: "pending"
-                };
-                const updateFilter = { eavesdropper: false, eavesdropperId: null };
-
-                await RequestModel.findOneAndUpdate(findFilter, updateFilter);
-
-                const updatedRequest = JSON.parse(await redisClient.get(`requester:${senderId}`));
-                updatedRequest.eavesdropper = false;
-                updatedRequest.eavesdropperId = null;
-                const createdOn = updatedRequest.createdOn;
-
-                await redisClient.multi()
-                    .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
-                    .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
-                    .exec();
-            }
-            catch (err) {
-                console.error(err);
-            }
-        }
-
         if (socket.chatSession) {
-            socket.to(socket.chatSession).emit("sessionDisturbed", "Participant left"); // call leave event
+            socket.to(socket.chatSession).emit("sessionDisturbed", "Participant left");
         }
 
         socket.broadcast.emit("userLeft", socket.userId);

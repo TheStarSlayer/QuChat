@@ -538,14 +538,15 @@ function ChatSession() {
         socket.on("keyGenFailed", async (msg) => {
             if (userId !== chatRoomId)
                 socket.emit("leave", chatRoomId);
-
-            toast.error(msg);
-            setTimeout(() => resetChatWindow(), 1000);
-        });
-
-        socket.on("requestFailed", (msg) => {
-            if (userId !== chatRoomId)
-                socket.emit("leave", chatRoomId);
+            else {
+                try {
+                    await qcCaller.delete(`/deleteMetadata/${chatRoomId}`);
+                }
+                catch {
+                    toast.info("Could not delete metadata");
+                    toast.info("Either it was not created, or already deleted!");
+                }
+            }
 
             toast.error(msg);
             setTimeout(() => resetChatWindow(), 1000);
@@ -578,7 +579,7 @@ function ChatSession() {
             socket.off("sessionEnd");
             socket.off("sessionDisturbed");
             socket.off("keyGenFailed");
-            socket.off("requestFailed");
+
             (async () => {
                 if (isSetToBusy.current) {
                     await apiCaller.patch("/setToAvailable");

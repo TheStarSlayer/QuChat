@@ -14,6 +14,8 @@ function EavesdroppableRequests() {
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
     const timeoutId = useRef("");
 
+    const socket = socketRef.current;
+
     function searcher(value) {
         if (value === "") {
             setSubsetEDRequests([...eavesdroppableRequests]);
@@ -25,6 +27,14 @@ function EavesdroppableRequests() {
 
     useEffect(() => {
         (() => searcher(searchTermForEDR))();
+
+        return () => {
+            socket.off("response");
+            if (timeoutId.current !== -1) {
+                clearTimeout(timeoutId.current);
+                timeoutId.current = -1;                
+            }
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [eavesdroppableRequests]);
 
@@ -33,9 +43,7 @@ function EavesdroppableRequests() {
         try {
             await apiCaller.patch(`/eavesdrop/${request.sender}`);
             
-            const socket = socketRef.current;
             socket.emit("eavesdropRequest", request.sender);
-
             setWindowLoading("Sneaked in, now waiting for response from receiver...");
 
             timeoutId.current = setTimeout(() => {
@@ -64,7 +72,6 @@ function EavesdroppableRequests() {
 
                     setShowChatSession(true);
                 }
-                
             });
         }
         catch (error) {

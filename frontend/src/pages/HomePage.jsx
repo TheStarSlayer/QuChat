@@ -63,6 +63,7 @@ function HomePage() {
     const socketRef = useRef(null);
 
     function resetChatWindow() {
+        setWindowLoading("");
         setShowNewRequest("");
         setShowEavesdroppableRequests(false);
         setShowRequestsToMe(false);

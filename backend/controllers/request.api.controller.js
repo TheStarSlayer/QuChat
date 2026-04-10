@@ -121,7 +121,7 @@ export const eavesdroppableRequestsController = async (req, res) => {
 
     try {
         const requestIndex = await redisClient.zRange('EDRequestIndex', 0, -1);
-
+        console.log(requestIndex);
         requests = requestIndex
             .map(async requester => {
                 const request = JSON.parse(await redisClient.get(`requester:${requester}`));
@@ -156,6 +156,7 @@ export const eavesdroppableRequestsController = async (req, res) => {
             return res.status(500).json({ msg: "Internal server error" });
         }
     }
+    console.log(requests);
     return res.status(200).json(requests);
 };
 
