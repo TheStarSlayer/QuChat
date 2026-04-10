@@ -19,7 +19,8 @@ function EavesdroppableRequests() {
     function searcher(value) {
         if (value === "") {
             setSubsetEDRequests([...eavesdroppableRequests]);
-        } else {
+        }
+        else {
             const regex = new RegExp(value, "i");
             setSubsetEDRequests(eavesdroppableRequests.filter(r => regex.test(r.sender)));
         }
@@ -27,7 +28,10 @@ function EavesdroppableRequests() {
 
     useEffect(() => {
         (() => searcher(searchTermForEDR))();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [eavesdroppableRequests]);
 
+    useEffect(() => {
         return () => {
             socket.off("response");
             if (timeoutId.current !== -1) {
@@ -36,7 +40,7 @@ function EavesdroppableRequests() {
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [eavesdroppableRequests]);
+    }, [])
 
     async function eavesdropRequest(request) {
         setWindowLoading("Sneaking...");
