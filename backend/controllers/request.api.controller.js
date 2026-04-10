@@ -83,7 +83,7 @@ export const getMyActiveRequestsController = async (req, res) => {
     try {
         const requestIndex = await redisClient.zRange(`requestee:${userId}`, 0, -1, { REV: true });
         
-        requests = requestIndex.map(async requester => {
+        const requestsPromises = requestIndex.map(async requester => {
             const request = JSON.parse(await redisClient.get(`requester:${requester}`));
             if (!request) return;
             return {
@@ -96,6 +96,8 @@ export const getMyActiveRequestsController = async (req, res) => {
                 chatSessionTimeInMin: request.chatSessionTimeInMin
             };
         });
+
+        requests = await Promise.all(requestsPromises);
     }
     catch (err) {
         console.error(err);
@@ -113,7 +115,7 @@ export const getMyActiveRequestsController = async (req, res) => {
         }
     }
 
-    return res.status(200).json(requests);
+    return res.status(200).json({ requests });
 };
 
 export const eavesdroppableRequestsController = async (req, res) => {
@@ -121,8 +123,8 @@ export const eavesdroppableRequestsController = async (req, res) => {
 
     try {
         const requestIndex = await redisClient.zRange('EDRequestIndex', 0, -1);
-        console.log(requestIndex);
-        requests = requestIndex
+        
+        const requestsPromises = requestIndex
             .map(async requester => {
                 const request = JSON.parse(await redisClient.get(`requester:${requester}`));
                 return {
@@ -134,8 +136,13 @@ export const eavesdroppableRequestsController = async (req, res) => {
                     typeOfEncryption: request.typeOfEncryption,
                     chatSessionTimeInMin: request.chatSessionTimeInMin
                 };
-            })
-            .filter(request => request.sender !== req.userId && request.receiver !== req.userId);
+            });
+
+            const resolvedRequests = await Promise.all(requestsPromises);
+
+            requests = resolvedRequests.filter(
+                request => request.sender !== req.userId && request.receiver !== req.userId
+            );
     }
     catch (err) {
         console.error(err);
@@ -156,8 +163,8 @@ export const eavesdroppableRequestsController = async (req, res) => {
             return res.status(500).json({ msg: "Internal server error" });
         }
     }
-    console.log(requests);
-    return res.status(200).json(requests);
+    
+    return res.status(200).json({ requests });
 };
 
 export const eavesdropController = async (req, res) => {
