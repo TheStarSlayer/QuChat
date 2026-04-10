@@ -222,9 +222,7 @@ export const socketDisconnectEvent = async (socket) => {
                         .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
                         .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
                         .exec();
-
-                    console.log(await redisClient.get(`requester:${senderId}`));
-                    console.log(await redisClient.zRange('EDRequestIndex', 0, -1));
+                        
                 }
                 catch (err) {
                     console.error(err);
