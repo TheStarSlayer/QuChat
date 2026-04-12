@@ -143,6 +143,7 @@ export const sendMessageEvent = (socket, roomId, message) => {
         message: message.message,
         sender: message.sender,
         containsFile: message.containsFile,
+        fileName: message.fileName,
         fileKey: message.fileKey,
         profilePic: `https://cdn.auth0.com/avatars/${profilePicAvtr}.png`
     });

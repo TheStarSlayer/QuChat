@@ -7,6 +7,16 @@ export const getAESKey = async (key) => {
     );
 }
 
+export const hashFile = async (fileBlob) => {
+    const arrayBuffer = await fileBlob.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    
+    return hashHex;
+};
+
 export const encrypt = async (text, cryptoKey) => {
     const encoder = new TextEncoder();
     const data = encoder.encode(text);

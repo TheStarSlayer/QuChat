@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import HomeContext from "../../../contexts/HomeContext";
 import { toast } from "react-toastify";
 import qcCaller from "../../../lib/qc";
-import { encrypt, decrypt, encryptFile, decryptFile, getAESKey } from "../../../lib/protector";
+import { encrypt, decrypt, encryptFile, decryptFile, getAESKey, hashFile } from "../../../lib/cryptoLib";
 import ChatSessionStatus from "./ChatSessionStatus";
 import apiCaller from "../../../lib/api";
 import axios from "axios";
@@ -100,51 +100,88 @@ function ChatSession() {
     async function sendMessage() {
         const socket = socketRef.current;
 
-        if (sendingFile !== "") {
-            setWindowLoading("Uploading file...");
+        if (sendingFile === "" && message.trim() === "")
+            return;
 
-            const key = sendingFile.name;
-            const fileType = sendingFile.type;
+        let fileToSend = sendingFile;
+        const fileName = fileToSend !== "" ? sendingFile.name : "";
+        const fileType = fileToSend !== "" ? sendingFile.type : "";
+        let messageToSend = message;
+
+        setMessage("");
+        setSendingFile("");
+
+        let key = "";
+
+        if (fileToSend !== "") {
+            toast.info("Uploading file...");
+
+            const sendingOn = Date.now();
+            const interMessage = {
+                isUploading: true,
+                sendingOn: sendingOn,
+                message: messageToSend,
+                sender: userId,
+                senderProfilePic: profilePic,
+                isMe: true,
+                containsFile: true,
+                fileKey: key,
+                fileName: fileName
+            };
+
+            setChatMessages(prev => 
+                [...prev, interMessage]
+            );
+
             try {
+                key = await hashFile(fileToSend);
+                
+                if (chatEncryption === "bb84")
+                    fileToSend = await encryptFile(sendingFile, quantumKey.current);
+    
                 const res = await apiCaller.get(`/getUploadLink`, {
                     params: { bucketName: "quchat", key, fileType }
                 });
                 const uploadLink = res.data.uploadLink;
 
-                if (chatEncryption === "bb84") {
-                    const encryptedFile = await encryptFile(sendingFile, quantumKey.current);
-                    await axios.put(uploadLink, encryptedFile, { 
-                        headers: { "Content-Type": fileType }
-                    });
-                }
-                else {
-                    await axios.put(uploadLink, sendingFile, {
-                        headers: { "Content-Type": fileType }
-                    });
-                }
+                await axios.put(uploadLink, fileToSend, {
+                    headers: { "Content-Type": fileType }
+                });
 
                 filesSentByMe.current.push(key);
+
+                toast.success("File uploaded successfully!");
+                setChatMessages(prev => 
+                    prev.filter(message => message?.sendingOn !== sendingOn)
+                );
             }
             catch (error) {
                 console.error(error);
-                toast.error("Cannot upload file!");
-                setSendingFile("");
-            }
-            finally {
-                setWindowLoading("");
+                toast.error("Failed to send message - cannot upload file!");
+                setChatMessages(prev => 
+                    prev.map(message => {
+                        try {
+                            if (message.sendingOn === sendingOn)
+                                message.isUploading = false;
+                            return message;
+                        }
+                        catch {
+                            return message;
+                        }
+                    })
+                );
+                return;
             }
         }
 
-        if (sendingFile === "" && !message.trim())
-            return;
-
         const newMessage = {
-            message: message,
+            message: messageToSend,
             sender: userId,
             senderProfilePic: profilePic,
             isMe: true,
-            containsFile: sendingFile === "" ? false : true,
-            fileKey: sendingFile === "" ? null : sendingFile.name
+            containsFile: fileToSend === "" ? false : true,
+            fileName: fileToSend === "" ? null : fileName,
+            fileKey: fileToSend === "" ? null : key,
         };
 
         let receivedMessage = newMessage.message;
@@ -156,9 +193,6 @@ function ChatSession() {
             newMessage.message = await encrypt(newMessage.message, quantumKey.current);
         
         socket.emit("sendMessage", chatRoomId, newMessage);
-        
-        setMessage("");
-        sendingFile !== "" && setSendingFile("");
     }
 
     function checkFileSize(file) {
@@ -196,9 +230,16 @@ function ChatSession() {
         return fileRes.data;
     }
 
-    async function handleDownload(key) {
+    async function handleDownload(key, name, index) {
         try {
-            setWindowLoading("Downloading file...");
+            toast.info("Downloading file...");
+            
+            setChatMessages(prev =>
+                prev.map((msg, i) =>
+                    i === index ? { ...msg, isDownloading: true } : msg
+                )
+            );
+
             let blob = await downloadFile(key);
 
             if (chatEncryption === "bb84") {
@@ -211,18 +252,23 @@ function ChatSession() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = key;
+            a.download = name;
             document.body.appendChild(a);
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
+            toast.success("File downloaded!");
         }
         catch (error) {
             console.error(error);
             toast.error("Cannot download file!");
         }
         finally {
-            setWindowLoading("");
+            setChatMessages(prev =>
+                prev.map((msg, i) =>
+                    i === index ? { ...msg, isDownloading: false } : msg
+                )
+            );
         }
     }
 
@@ -531,7 +577,9 @@ function ChatSession() {
                     senderProfilePic: message.profilePic, 
                     isMe: false,
                     containsFile: message.containsFile,
-                    fileKey: message.fileKey
+                    fileName: message.fileName,
+                    fileKey: message.fileKey,
+                    isDownloading: false
                 }]
             );
         });
@@ -734,31 +782,68 @@ function ChatSession() {
                                         {msg.containsFile ? (
                                             <>
                                                 {msg.message && (
-                                                    <p className="text-sm text-white mb-1" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
+                                                    <p className="text-sm text-white mb-2" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
                                                         {msg.message}
                                                     </p>
                                                 )}
 
-                                                {isMe ? (
-                                                    <p className="text-sm text-white" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
-                                                        {msg.fileKey || 'File'}
-                                                    </p>
-                                                ) : (
-                                                    <div className="flex items-center justify-between gap-3" style={{ minWidth: 180 }}>
-                                                        <div className="min-w-0 flex-1">
+                                                <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl"
+                                                    style={{
+                                                        background: isMe ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.02)",
+                                                        border: "1px solid rgba(33,150,243,0.12)",
+                                                        minWidth: 180
+                                                    }}>
+                                                    <div className="min-w-0 flex items-center gap-3">
+                                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={isMe ? "rgba(255,255,255,0.85)" : "#2196F3"} strokeWidth="1.5" className="shrink-0">
+                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                            <path d="M14 2v6h6" />
+                                                        </svg>
+                                                        <div className="min-w-0">
                                                             <p className="text-sm text-white font-semibold truncate" style={{ lineHeight: 1.2 }}>
-                                                                {msg.fileKey || 'File'}
+                                                                {msg.fileName || msg.fileKey || 'File'}
                                                             </p>
+                                                            {msg.message && <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)", margin: 0 }}>Attachment</p>}
                                                         </div>
-                                                        <button
-                                                            onClick={() => handleDownload(msg.fileKey)}
-                                                            className="px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-                                                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(33,150,243,0.12)", color: "#2196F3" }}
-                                                        >
-                                                            Download
-                                                        </button>
                                                     </div>
-                                                )}
+
+                                                    {!isMe ? (
+                                                        msg.isDownloading ? (
+                                                            <div title="Downloading..." className="flex items-center">
+                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2196F3" strokeWidth="2">
+                                                                    <g>
+                                                                        <path d="M12 2a10 10 0 0 0 0 20" strokeLinecap="round" />
+                                                                        <animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+                                                                    </g>
+                                                                </svg>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleDownload(msg.fileKey, msg.fileName, i)}
+                                                                className="px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+                                                                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(33,150,243,0.12)", color: "#2196F3" }}
+                                                            >
+                                                                Download
+                                                            </button>
+                                                        )
+                                                    ) : (
+                                                        ('isUploading' in msg) ? (
+                                                            msg.isUploading ? (
+                                                                <div title="Uploading..." className="flex items-center">
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="2">
+                                                                        <g>
+                                                                            <path d="M12 2a10 10 0 0 0 0 20" strokeLinecap="round" />
+                                                                            <animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+                                                                        </g>
+                                                                    </svg>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-red-400 font-semibold" style={{ fontSize: "12px" }}>Failed</div>
+                                                            )
+                                                        ) : (
+                                                            <div className="text-sm text-white opacity-80" style={{ fontSize: "12px" }}>Sent</div>
+                                                        )
+                                                    )}
+                                                </div>
                                             </>
                                         ) : (
                                             <p className="text-sm text-white" style={{ lineHeight: 1.5, wordBreak: "break-word" }}>
