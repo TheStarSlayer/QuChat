@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Literal
 
-from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2 as Sampler
+from pydantic import BaseModel
 
+from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2 as Sampler
 from qiskit_aer import AerSimulator
-from qiskit_aer.primitives import SamplerV2 as AerSampler
 from qiskit.primitives import BackendSamplerV2
 
 from qiskit.transpiler import generate_preset_pass_manager
@@ -19,9 +19,13 @@ import math
 import pymongo
 from pymongo import ReturnDocument
 
+from lib.BCHCode import BCHCode
+
 load_dotenv()
 
 app = FastAPI()
+
+bch = BCHCode(2, 255, 15, 1)
 
 powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256]
 
@@ -31,7 +35,7 @@ if os.getenv("PROD") == "true":
 else:
     origins.append("http://localhost:8595")
     origins.append("http://localhost:8596")
-    
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -48,6 +52,11 @@ q_service = QiskitRuntimeService(
     instance="quchat-key"
 )
 
+protected_routes = [
+    "distributeRawKey", "deleteMetadata", "getRandomIndices",
+    "generateECMetadata", "correctErrorsInKey"
+]
+
 @app.middleware("http")
 async def authorize_call(
     request: Request,
@@ -57,7 +66,7 @@ async def authorize_call(
     if request.method == "OPTIONS":
         return await call_next(request)
     
-    if request.url.path.split("/")[1] not in ["distributeRawKey", "deleteMetadata", "getRandomIndices"]:
+    if request.url.path.split("/")[1] not in protected_routes:
         return await call_next(request)
     
     auth_header = request.headers.get("Authorization")
@@ -341,3 +350,29 @@ async def deleteMetadata(
     circuit_metadata = database["circuit_metadata"]
     circuit_metadata.delete_one({ 'roomId': roomId })
     return JSONResponse(status_code=204)
+
+class ECInput(BaseModel):
+    key: str
+    
+@app.post("/generateECMetadata")
+async def generateECMetadata(ECInput: ECInput):
+    key_list = [int(i) for i in ECInput.key]
+    encoded_key = bch.encode(key_list)
+    parity_bits = encoded_key[len(ECInput.key)::]
+    
+    parity_bits_str = ""
+    for i in range(len(parity_bits)):
+        parity_bits_str += str(parity_bits[i])
+    
+    return JSONResponse(status_code=200, content={ "parityBits": parity_bits_str })
+
+@app.post("/correctErrorsInKey")
+async def correctErrors(ECInput: ECInput):
+    key_list = [int(i) for i in ECInput.key]
+    corrected_key = bch.decode(key_list)
+    
+    corrected_key_str = ""
+    for i in range(len(corrected_key)):
+        corrected_key_str += str(corrected_key[i])
+        
+    return JSONResponse(status_code=200, content={ "key": corrected_key_str })
