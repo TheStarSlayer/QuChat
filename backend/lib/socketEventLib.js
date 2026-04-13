@@ -136,6 +136,14 @@ export const updateSocketDataWhenQBERAccepted = (socket, roomId) => {
     socket.chatSession = roomId;
 }
 
+export const sendParityBitsEvent = (socket, roomId, parityBits) => {
+    socket.to(roomId).emit("parity", parityBits);
+};
+
+export const keyCorrectedEvent = (socket, roomId) => {
+    socket.to(roomId).emit("keyCorrected");
+};
+
 export const sendMessageEvent = (socket, roomId, message) => {
     const profilePicAvtr = socket.userId[0].toLowerCase() + socket.userId[1].toLowerCase();
 

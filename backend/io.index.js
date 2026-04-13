@@ -7,7 +7,8 @@ import {
     updateSocketDataWhenQBERAccepted,
     updateSocketDataWhenAccepted, updateSocketDataWhenAcceptedQC,
     sessionDisturbedEvent, shareBasesEvent,
-    calculateQBEREvent, shareQBERResultEvent
+    calculateQBEREvent, shareQBERResultEvent,
+    sendParityBitsEvent, keyCorrectedEvent
 } from "./lib/socketEventLib.js";
 
 const socketInit = (io) => {
@@ -40,6 +41,9 @@ const socketInit = (io) => {
             shareQBERResultEvent(socket, roomId, qber));
 
         socket.on("updateOnQBERAccept", roomId => updateSocketDataWhenQBERAccepted(socket, roomId));
+
+        socket.on("sendParityBits", (roomId, parityBits) => sendParityBitsEvent(socket, roomId, parityBits));
+        socket.on("keyCorrected", (roomId) => keyCorrectedEvent(socket, roomId));
 
         socket.on("sendMessage", (roomId, message) =>
             sendMessageEvent(socket, roomId, message));
