@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Literal
@@ -349,7 +349,7 @@ async def deleteMetadata(
 ):
     circuit_metadata = database["circuit_metadata"]
     circuit_metadata.delete_one({ 'roomId': roomId })
-    return JSONResponse(status_code=204)
+    return Response(status_code=204)
 
 class ECInput(BaseModel):
     key: str
