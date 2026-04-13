@@ -373,29 +373,43 @@ function ChatSession() {
                     socket.emit("joinAck", userId, true);
                     setToBusy();
 
-                    socket.once("bases", async (bases) => {                        
+                    socket.once("bases", async (bases) => {                      
+                        setStatusWindow("Sifting key based on receiver's bases...");  
                         siftKey(bases);
-                        setStatusWindow("Sharing bases for sifting key...");
+
+                        setStatusWindow("Sharing bases to receiver...");
                         socket.emit("shareBases", chatRoomId, qkeyBases.current);
 
                         try {
+                            setStatusWindow("Selecting random indices for QBER calculations...");
                             const response = await qcCaller.get(
                                 `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}?keyLength=${siftedQkeyBits.current.length}`
                             );
-
                             const randIndices = response.data.randIndices;
                             const randBits = getRandBits(randIndices);
-                            setStatusWindow("Key generated! Requesting for QBER...");
 
+                            setStatusWindow("Requesting for QBER...");
                             socket.emit("calculateQBER", chatRoomId, { randIndices, randBits });
 
-                            socket.once("qberResult", (receivedQber) => {
+                            socket.once("qberResult", async (receivedQber) => {
                                 toast.info(`QBER value: ${receivedQber}`);
                                 
                                 if (receivedQber <= QBERThreshold && receivedQber !== null) {
-                                    socket.emit("updateOnQBERAccept", chatRoomId);
                                     setQBER(receivedQber);
-                                    sessionStarted();
+                                    setStatusWindow("QBER is good...Generating BCH ECC metadata...");
+
+                                    const res = await qcCaller.post("/generateECMetadata", {
+                                        key: siftedQkeyBits.current
+                                    });
+                                    const parityBits = res.data.parityBits;
+
+                                    setStatusWindow("Waiting for receiver to correct their key...");
+                                    socket.emit("sendParityBits", chatRoomId, parityBits);
+
+                                    socket.once("keyCorrected", () => {
+                                        socket.emit("updateOnQBERAccept", chatRoomId);
+                                        sessionStarted();
+                                    });
                                 }
                                 else {
                                     setStatusWindow("Session compromised! QBER too high.");
@@ -452,18 +466,43 @@ function ChatSession() {
                                 }
                             });
 
-                            socket.once("qberResult", (receivedQber) => {
+                            socket.once("qber", ({ randIndices }) => {
+                                setStatusWindow("Intercepted random indices from host to discard...");
+                                
+                                const _ = getRandBits(randIndices);
                                 socket.off("bases");
-                                if (receivedQber > QBERThreshold) {
-                                    toast.error("Detected by BB84 QKD algorithm!");
-                                    setStatusWindow("");
-                                    resetChatWindow();
-                                }
-                                else {
-                                    socket.emit("updateOnQBERAccept", chatRoomId);
-                                    toast.success("Eavesdropping successfully!");
-                                    sessionStarted();
-                                }
+
+                                setStatusWindow("Waiting for QBER results...");
+
+                                socket.once("qberResult", (receivedQber) => {
+                                    if (receivedQber > QBERThreshold) {
+                                        toast.error("Detected by BB84 QKD algorithm!");
+                                        setStatusWindow("");
+                                        resetChatWindow();
+                                    }
+                                    else {
+                                        setQBER(receivedQber);
+                                        setStatusWindow("QBER is good...Waiting for host to generate BCH ECC metadata...");
+                                        
+                                        socket.once("parity", async (parityBits) => {
+                                            setStatusWindow("Correcting key...");
+
+                                            const keyWithParity = siftedQkeyBits.current + parityBits;
+                                            const res = await qcCaller.post("/correctErrorsInKey", {
+                                                key: keyWithParity
+                                            });
+                                            siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
+
+                                            setStatusWindow("Waiting for receiver to correct their key...");
+
+                                            socket.once("keyCorrected", () => {
+                                                socket.emit("updateOnQBERAccept", chatRoomId);
+                                                toast.success("Eavesdropping successfully!");
+                                                sessionStarted();
+                                            });
+                                        });
+                                    }
+                                });
                             });
                         }
                         catch {
@@ -503,12 +542,15 @@ function ChatSession() {
                                 qkeyBases.current = response.data.bases;
                                 qkeyBits.current = response.data.bits;
 
-                                socket.emit("shareBases", chatRoomId, qkeyBases.current);
                                 setStatusWindow("Key generated! Sharing bases...");
+                                socket.emit("shareBases", chatRoomId, qkeyBases.current);
 
                                 socket.once("bases", (bases) => {
+                                    setStatusWindow("Sifting bases...");
                                     socket.once("qber", ({ randIndices, randBits }) => {
                                         siftKey(bases);
+
+                                        setStatusWindow("Calculating QBER...");
 
                                         const myRandBits = getRandBits(randIndices);
                                         const calcQber = qberCalculator(randBits, myRandBits);
@@ -521,7 +563,22 @@ function ChatSession() {
 
                                         if (calcQber <= QBERThreshold) {
                                             setQBER(calcQber);
-                                            sessionStarted();
+                                            setStatusWindow("Waiting for host to generate BCH ECC metadata..."); 
+
+                                            socket.once("parity", async (parityBits) => {
+                                                setStatusWindow("Correcting key...");
+
+                                                const keyWithParity = siftedQkeyBits.current + parityBits;
+
+                                                const res = await qcCaller.post("/correctErrorsInKey", {
+                                                    key: keyWithParity
+                                                });
+
+                                                siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
+
+                                                socket.emit("keyCorrected", chatRoomId);
+                                                sessionStarted();
+                                            });
                                         }
                                         else {
                                             setStatusWindow("Session compromised!");
@@ -563,7 +620,7 @@ function ChatSession() {
                     socket.emit("sessionDisturbed", chatRoomId, "sample_error");
 
                     toast.error("Generated keys are not the same!");
-                    toast.error("This means that sampling missed mismatched bits.");
+                    toast.error("This means that sampling/error correction missed mismatched bits.");
                     toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
                     
                     resetChatWindow();
@@ -615,11 +672,12 @@ function ChatSession() {
 
             if (msg === "sample_error") {
                 toast.error("Generated keys are not the same!");
-                toast.error("This means that sampling missed mismatched bits.");
+                toast.error("This means that sampling/error correction missed mismatched bits.");
                 toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
             }
-
-            toast.error(msg);
+            else
+                toast.error(msg);
+            
             setTimeout(() => resetChatWindow(), 1000);
         });
 
