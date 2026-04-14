@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Literal
 
+from starlette.concurrency import run_in_threadpool
+
+import asyncio
+
 from pydantic import BaseModel
 
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2 as Sampler
@@ -87,11 +91,11 @@ async def authorize_call(
     return await call_next(request)
 
 @app.get("/rng/{typeOfMachine}")
-async def random_num_generator(
+def random_num_generator(
     typeOfMachine: Literal["sim", "hw"],
     bit_length: int = 156,
     no_of_shots: int = 1
-) -> list[str | None]:
+) -> list[str | None] | tuple[str, int, int, int]:
     
     if bit_length < 1 or no_of_shots < 1:
         return []
@@ -108,43 +112,43 @@ async def random_num_generator(
     qc.h(range(adj_bitlength))
     qc.measure_all()
     
-    if (typeOfMachine == "sim"):
+    if typeOfMachine == "sim":
         q_backend = AerSimulator()
         sampler = BackendSamplerV2(backend=q_backend)
         isa_circuit = qc
-    else:
-        q_backend = q_service.least_busy(simulator=False, min_num_qubits=156)
-        pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
-        sampler = Sampler(q_backend)
-        isa_circuit = pm.run(qc)
+        
+        job = sampler.run([isa_circuit], shots=adj_shots)
+        result = job.result()
+        counts = result[0].data.meas.get_counts()
+        list_of_rn = list(counts.keys())
+
+        if adj_shots > no_of_shots:
+            adj_list_of_rn = []
+            step = int(adj_shots/no_of_shots)
+            
+            for i in range(0, adj_shots, step):
+                bitstring = ""
+                for j in range(step):
+                    bitstring += list_of_rn[i + j]
+                adj_list_of_rn.append(bitstring[:bit_length])
+
+            return adj_list_of_rn
+        
+        return list_of_rn
+    
+    q_backend = q_service.least_busy(simulator=False, min_num_qubits=156)
+    pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
+    sampler = Sampler(q_backend)
+    isa_circuit = pm.run(qc)
         
     job = sampler.run([isa_circuit], shots=adj_shots)
-    
-    result = job.result()
-    counts = result[0].data.meas.get_counts()
-
-    list_of_rn = list(counts.keys())
-
-    if adj_shots > no_of_shots:
-        adj_list_of_rn = []
-        step = int(adj_shots/no_of_shots)
-        
-        for i in range(0, adj_shots, step):
-            bitstring = ""
-            for j in range(step):
-                bitstring += list_of_rn[i + j]
-            adj_list_of_rn.append(bitstring[:bit_length])
-
-        return adj_list_of_rn
-    
-    return list_of_rn
+    return (job.job_id(), adj_shots, no_of_shots, bit_length)
 
 @app.get("/getRandomIndices/{typeOfMachine}")
 async def random_indices_generator(
     typeOfMachine: Literal["sim", "hw"],
     keyLength: int = 156
-) -> list[int | None]:
-    
+):
     if keyLength >= 1024:
         return JSONResponse(
             status_code=400,
@@ -161,9 +165,13 @@ async def random_indices_generator(
     no_of_bits = max(1, math.ceil(math.log2(keyLength)))
     
     observed_indices = await random_indices_gen_helper(keyLength, typeOfMachine, def_length, no_of_bits)
-        
+    if observed_indices is None:
+        return JSONResponse(status_code=408, content={ "error": "Request timed out" })
+    
     while len(observed_indices) < min_length:
         new_indices = await random_indices_gen_helper(keyLength, typeOfMachine, min_length, no_of_bits)
+        if new_indices is None:
+            return JSONResponse(status_code=408, content={ "error": "Request timed out" })
         observed_indices.update(new_indices)
     
     observed_indices_list = list(observed_indices)
@@ -179,10 +187,15 @@ async def random_indices_gen_helper(
     typeOfMachine: Literal["sim", "hw"],
     no_of_indices: int,
     no_of_bits: int
-):    
+) -> set | None:    
     observed_indices = set()
-    indices_bitstring = await random_num_generator(typeOfMachine, no_of_bits, no_of_indices)
+    indices_bitstring = random_num_generator(typeOfMachine, no_of_bits, no_of_indices)
     
+    if not isinstance(indices_bitstring, list):
+        indices_bitstring = await check_for_random_number(indices_bitstring)
+        if indices_bitstring is None:
+            return None
+            
     for bitstring in indices_bitstring:
         index = 0
         for i in range(0, no_of_bits):
@@ -248,7 +261,12 @@ async def distribute_raw_key(
         }
         circuit_metadata.insert_one(circuit_metadata_dict)
         
-        bitstrings = await random_num_generator(typeOfMachine=typeOfMachine, bit_length=511, no_of_shots=2)
+        bitstrings = random_num_generator(typeOfMachine=typeOfMachine, bit_length=511, no_of_shots=2)
+        
+        if not isinstance(bitstrings, list):
+            bitstrings = await check_for_random_number(bitstrings)
+            if bitstrings is None:
+                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
         
         updated_metadata_dict = {
             "senderBases": bitstrings[0],
@@ -286,18 +304,26 @@ async def distribute_raw_key(
                 content={ "message": "Call again later" }
             )
         
-        bases = (await random_num_generator(
-            typeOfMachine=typeOfMachine,
-            bit_length=511,
-            no_of_shots=1))[0]
+        bases_list = random_num_generator(typeOfMachine=typeOfMachine, bit_length=511, no_of_shots=1)
         
-        observed_bits = await generateAndRunBB84Circuit(
+        if not isinstance(bases_list, list):
+            bases_list = await check_for_random_number(bases_list)
+            if bases_list is None:
+                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
+            
+        bases = bases_list[0]
+        observed_bits = generateAndRunBB84Circuit(
             sender_bit_str=metadata["senderBits"],
             sender_bases_str=metadata["senderBases"],
             receiver_bases_str=bases,
             typeOfMachine=typeOfMachine
         )
-        
+
+        if not isinstance(observed_bits, str):
+            observed_bits = await check_for_circuit_results(observed_bits)
+            if observed_bits is None:
+                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
+            
         if userId == roomRequest["eavesdropperId"]:
             updated_metadata_dict = {
                 "senderBases": bases,
@@ -320,12 +346,12 @@ async def distribute_raw_key(
     )
 
 @app.get("/generateAndRunBB84Circuit")
-async def generateAndRunBB84Circuit(
+def generateAndRunBB84Circuit(
     sender_bit_str: str,
     sender_bases_str: str,
     receiver_bases_str: str,
     typeOfMachine: Literal["sim", "hw"],
-) -> str | None:
+) -> str | tuple[list, list]:
     """
         Default base: Z (0)
         Bits: 0 -> |0>
@@ -385,19 +411,27 @@ async def generateAndRunBB84Circuit(
     for i in range(0, len(isa_circuit), 3):
         isa_circuits.append(isa_circuit[i:i+3])
         
-    observed_bits = ""
+    if typeOfMachine == "sim":
+        observed_bits = ""
+        
+        for i in range(len(isa_circuits)):
+            job = sampler.run(isa_circuits[i], shots=1)
+            result = job.result()
+            
+            for i in range(len(isa_circuits[i])):
+                counts = result[i].data.c.get_counts()
+                key = list(counts.keys())[0]
+                meas = list(key)
+                observed_bits += ''.join(meas)[::-1]
+            
+        return observed_bits
     
+    job_list = []
     for i in range(len(isa_circuits)):
         job = sampler.run(isa_circuits[i], shots=1)
-        result = job.result()
-        
-        for i in range(len(isa_circuits[i])):
-            counts = result[i].data.c.get_counts()
-            key = list(counts.keys())[0]
-            meas = list(key)
-            observed_bits += ''.join(meas)[::-1]
-        
-    return observed_bits
+        job_list.append(job.job_id())
+
+    return (job_list, isa_circuits)
 
 def quantum_circuit(
     bit_length,
@@ -428,6 +462,123 @@ def quantum_circuit(
         qc.measure(i, i)
         
     return qc
+
+def poll_for_circuit_results(job_list):
+    for jid in job_list:
+        job = q_service.job(job_id=jid)
+        print("Circuit results: ", job.status())
+        
+        if job.status() in ["ERROR", "CANCELLED"]:
+            return "Failed"
+
+        if job.status() != "DONE":
+            return "Try later"
+    
+    return "Done"
+        
+async def check_for_circuit_results(job_metadata):
+    job_list = job_metadata[0]
+    isa_circuits = job_metadata[1]
+    
+    await asyncio.sleep(5)
+    counter = 0
+    
+    while True:
+        all_job_status = poll_for_circuit_results(job_list)
+
+        if all_job_status == "Done":
+            break
+        
+        if counter > 40 or all_job_status == "Failed":
+            for jid in job_list:
+                delete_job(jobId=jid)
+            return None
+        
+        counter += 1
+        await asyncio.sleep(10)
+    
+    observed_bits = ""
+    
+    for i in range(len(isa_circuits)):
+        job = q_service.job(job_id=job_list[i])
+        result = job.result()
+        
+        for j in range(len(isa_circuits[i])):
+            counts = result[j].data.c.get_counts()
+            key = list(counts.keys())[0]
+            meas = list(key)
+            observed_bits += ''.join(meas)[::-1]
+        
+    return observed_bits
+    
+def poll_for_random_numbers(
+    jobId,
+    adj_shots: int,
+    no_of_shots: int,
+    bit_length: int
+) -> list[str | None] | str:
+    job = q_service.job(job_id=jobId)
+    print("Random Num: ", job.status())
+    if job.status() in ["ERROR", "CANCELLED"]:
+        return None
+    
+    if job.status() == "DONE":
+        result = job.result()
+        counts = result[0].data.meas.get_counts()
+        list_of_rn = list(counts.keys())
+
+        if adj_shots > no_of_shots:
+            adj_list_of_rn = []
+            step = int(adj_shots/no_of_shots)
+            
+            for i in range(0, adj_shots, step):
+                bitstring = ""
+                for j in range(step):
+                    bitstring += list_of_rn[i + j]
+                adj_list_of_rn.append(bitstring[:bit_length])
+
+            return adj_list_of_rn
+        
+        return list_of_rn
+    
+    return "Try later"
+    
+async def check_for_random_number(job_details):
+    await asyncio.sleep(5)
+        
+    job_id = job_details[0]
+    adj_shots = job_details[1]
+    no_of_shots = job_details[2]
+    bit_length = job_details[3]
+    
+    counter = 0
+    
+    while True:
+        random_numbers = poll_for_random_numbers(job_id, adj_shots, no_of_shots, bit_length)
+        
+        if isinstance(random_numbers, list):
+            return random_numbers
+        
+        if counter > 20 or random_numbers is None:
+            delete_job(job_id)
+            return None
+        
+        counter += 1
+        await asyncio.sleep(10)
+            
+def delete_job(jobId):
+    job = q_service.job(job_id=jobId)
+    
+    try:
+        job.cancel()
+    except:
+        pass
+    
+    if job.status() == "CANCELLED":
+        print("Cancelled job ", jobId)
+        return True
+    
+    return False
 
 @app.delete("/deleteMetadata/{roomId}")
 async def deleteMetadata(
