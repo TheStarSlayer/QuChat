@@ -621,7 +621,6 @@ function ChatSession() {
 
                     toast.error("Generated keys are not the same!");
                     toast.error("This means that sampling/error correction missed mismatched bits.");
-                    toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
                     
                     resetChatWindow();
                     return;
@@ -673,7 +672,6 @@ function ChatSession() {
             if (msg === "sample_error") {
                 toast.error("Generated keys are not the same!");
                 toast.error("This means that sampling/error correction missed mismatched bits.");
-                toast.info("This may occur when using real hardware. This app is not yet designed to handle noise!");
             }
             else
                 toast.error(msg);

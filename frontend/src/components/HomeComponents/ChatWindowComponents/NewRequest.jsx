@@ -281,7 +281,7 @@ function NewRequest() {
                                         <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                                     </svg>
                                     <span style={{ fontSize: "11px", color: "rgba(216,121,0,0.9)", lineHeight: 1.4 }}>
-                                        A real quantum machine may take a long time to generate a key. This app does not currently handle noise from hardware. Your session may get invalidated!
+                                        A real quantum machine may take a long time to generate a key. Your session may get invalidated!
                                     </span>
                                 </div>
                             )}
