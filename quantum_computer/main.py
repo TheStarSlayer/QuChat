@@ -25,9 +25,9 @@ load_dotenv()
 
 app = FastAPI()
 
-bch = BCHCode(2, 255, 15, 1)
+bch = BCHCode(2, 511, 15, 1)
 
-powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256]
+powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 
 origins = []
 if os.getenv("PROD") == "true":
@@ -89,15 +89,18 @@ async def authorize_call(
 @app.get("/rng/{typeOfMachine}")
 async def random_num_generator(
     typeOfMachine: Literal["sim", "hw"],
-    bit_length: str = "156",
-    no_of_shots: str = "1"
+    bit_length: int = 156,
+    no_of_shots: int = 1
 ) -> list[str | None]:
     
-    bit_length = int(bit_length)
-    no_of_shots = int(no_of_shots)
-
-    if (bit_length < 1 or bit_length > 156 or no_of_shots < 1):
+    if bit_length < 1 or no_of_shots < 1:
         return []
+    
+    adj_shots = no_of_shots
+    if bit_length > 156:
+        adj_shots += ((bit_length // 156) - 1) * no_of_shots
+        if bit_length % 156 != 0:
+            adj_shots += no_of_shots
     
     qc = QuantumCircuit(bit_length)
     qc.h(range(bit_length))
@@ -113,23 +116,36 @@ async def random_num_generator(
         sampler = Sampler(q_backend)
         isa_circuit = pm.run(qc)
         
-    job = sampler.run([isa_circuit], shots=no_of_shots)
+    job = sampler.run([isa_circuit], shots=adj_shots)
     
     result = job.result()
     counts = result[0].data.meas.get_counts()
 
-    return list(counts.keys())
+    list_of_rn = list(counts.keys())
+
+    if adj_shots > no_of_shots:
+        adj_list_of_rn = []
+        
+        for i in range(0, adj_shots, adj_shots/no_of_shots):
+            bitstring = ""
+            for j in range(adj_shots/no_of_shots):
+                bitstring += list_of_rn[i + j]
+            adj_list_of_rn.append(bitstring[:bit_length])
+
+        return adj_list_of_rn
+    
+    return list_of_rn
 
 @app.get("/getRandomIndices/{typeOfMachine}")
 async def random_indices_generator(
     typeOfMachine: Literal["sim", "hw"],
-    keyLength: int = 78
+    keyLength: int = 156
 ) -> list[int | None]:
     
-    if keyLength >= 512:
+    if keyLength >= 1024:
         return JSONResponse(
             status_code=400,
-            content={ "message": "Does not support key length greater than 511" }
+            content={ "message": "Does not support key length greater than 1023" }
         )
 
     min_length = math.floor(0.1 * keyLength)
@@ -157,7 +173,7 @@ async def random_indices_gen_helper(
     no_of_bits: int
 ):    
     observed_indices = set()
-    indices_bitstring = await random_num_generator(typeOfMachine, str(no_of_bits), str(no_of_indices))
+    indices_bitstring = await random_num_generator(typeOfMachine, no_of_bits, no_of_indices)
     
     for bitstring in indices_bitstring:
         index = 0
@@ -174,6 +190,15 @@ async def distribute_raw_key(
     request: Request,
     roomId: str
 ):
+    """
+        AES requires a minimum of 128 bit key
+        We assume 50% of generated bits to be sifted away in BB84 (to generate: 256 bits)
+        We also remove maximum of 15% of sifted key for QBER calculation (to generate: ~ 376 bits)
+        
+        These are lower bounds; considering extra bits will only increase the entropy of the key
+        So we will generate 511 bit key
+    """
+    
     requests = database["requestmodels"]
     
     request_find_filter = {
@@ -215,7 +240,7 @@ async def distribute_raw_key(
         }
         circuit_metadata.insert_one(circuit_metadata_dict)
         
-        bitstrings = await random_num_generator(typeOfMachine=typeOfMachine, bit_length="156", no_of_shots="2")
+        bitstrings = await random_num_generator(typeOfMachine=typeOfMachine, bit_length=511, no_of_shots=2)
         
         updated_metadata_dict = {
             "senderBases": bitstrings[0],
@@ -253,14 +278,16 @@ async def distribute_raw_key(
                 content={ "message": "Call again later" }
             )
         
-        bases = (await random_num_generator(typeOfMachine=typeOfMachine))[0]
+        bases = (await random_num_generator(
+            typeOfMachine=typeOfMachine,
+            bit_length=511,
+            no_of_shots=1))[0]
         
         observed_bits = await generateAndRunBB84Circuit(
             sender_bit_str=metadata["senderBits"],
             sender_bases_str=metadata["senderBases"],
             receiver_bases_str=bases,
-            typeOfMachine=typeOfMachine,
-            bit_length=156
+            typeOfMachine=typeOfMachine
         )
         
         if userId == roomRequest["eavesdropperId"]:
@@ -290,7 +317,6 @@ async def generateAndRunBB84Circuit(
     sender_bases_str: str,
     receiver_bases_str: str,
     typeOfMachine: Literal["sim", "hw"],
-    bit_length: int = 156,
 ) -> str | None:
     """
         Default base: Z (0)
@@ -301,6 +327,68 @@ async def generateAndRunBB84Circuit(
         Bits: 0 -> |+>
               1 -> |->
     """
+    
+    og_bit_length = len(sender_bit_str)
+    quantum_circuits = []
+    
+    for i in range(og_bit_length // 156):
+        bit_length = 156
+        
+        start_index = bit_length * i
+        end_index = start_index + 156
+        
+        qc = quantum_circuit(
+            bit_length=bit_length,
+            sender_bit_str=sender_bit_str[start_index:end_index],
+            sender_bases_str=sender_bases_str[start_index:end_index],
+            receiver_bases_str=receiver_bases_str[start_index:end_index]
+        )
+        
+        quantum_circuits.append(qc)
+        
+    if og_bit_length % 156 != 0:
+        bit_length = og_bit_length % 156
+        
+        start_index = og_bit_length // 156
+        end_index = start_index + bit_length
+        
+        qc = quantum_circuit(
+            bit_length=bit_length,
+            sender_bit_str=sender_bit_str[start_index:end_index],
+            sender_bases_str=sender_bases_str[start_index:end_index],
+            receiver_bases_str=receiver_bases_str[start_index:end_index]
+        )
+        
+        quantum_circuits.append(qc)
+    
+    if (typeOfMachine == "sim"):
+        backend = AerSimulator()
+        sampler = BackendSamplerV2(backend=backend)
+        isa_circuit = [qc for qc in quantum_circuits]
+    else:
+        backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
+        sampler = Sampler(backend)
+        pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+        isa_circuit = [pm.run(qc) for qc in quantum_circuits]
+
+    job = sampler.run([isa_circuit], shots=1)
+    result = job.result()
+    observed_bits = ""
+    
+    for i in range(len(isa_circuit)):
+        counts = result[i].data.c.get_counts()
+        key = list(counts.keys())[0]
+        meas = list(key)
+        observed_bits += ''.join(meas)[::-1]
+        
+    return observed_bits
+
+def quantum_circuit(
+    bit_length,
+    sender_bit_str,
+    sender_bases_str,
+    receiver_bases_str
+):
     qc = QuantumCircuit(bit_length, bit_length)
     
     sender_bits = [int(i) for i in sender_bit_str]
@@ -322,26 +410,8 @@ async def generateAndRunBB84Circuit(
         if receiver_bases[i] == 1:
             qc.h(i)
         qc.measure(i, i)
-    
-    if (typeOfMachine == "sim"):
-        backend = AerSimulator()
-        sampler = BackendSamplerV2(backend=backend)
-        isa_circuit = qc
-    else:
-        backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
-        sampler = Sampler(backend)
-        pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
-        isa_circuit = pm.run(qc)
-
-    job = sampler.run([isa_circuit], shots=1)
-    result = job.result()
-    counts = result[0].data.c.get_counts()
-    
-    key = list(counts.keys())[0]
-    meas = list(key)
-    observed_bits = ''.join(meas)
         
-    return observed_bits[::-1]
+    return qc
 
 @app.delete("/deleteMetadata/{roomId}")
 async def deleteMetadata(
