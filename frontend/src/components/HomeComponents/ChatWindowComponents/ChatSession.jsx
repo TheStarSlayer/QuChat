@@ -288,13 +288,13 @@ function ChatSession() {
     function timerEnds() {
         const socket = socketRef.current;
         socket.emit("sessionEnd", chatRoomId);
-        resetChatWindow();
+        setTimeout(() => resetChatWindow(), 1000);
         toast.success("Chat session ended successfully!");
     }
 
     async function setToBusy() {
-        await apiCaller.patch("/setToBusy");
         isSetToBusy.current = true;
+        await apiCaller.patch("/setToBusy");
         toast.info("You cannot receive requests for now!");
     }
 
@@ -348,7 +348,7 @@ function ChatSession() {
                     setStatusWindow("Waiting for acknowledgement of session from host...");
                     if (!ack) {
                         setStatusWindow("");
-                        resetChatWindow();
+                        setTimeout(() => resetChatWindow(), 1000);
                         toast.info("Host did not acknowledge session!");
                     }
                     else {
@@ -412,11 +412,13 @@ function ChatSession() {
                                     });
                                 }
                                 else {
+                                    console.log(siftedQkeyBits.current);
+
                                     setStatusWindow("Session compromised! QBER too high.");
                                     socket.emit("resetSocketStats");
                                     toast.error("Session compromised!");
                                     setStatusWindow("");
-                                    resetChatWindow();
+                                    setTimeout(() => resetChatWindow(), 1000);
                                 }
                             });
                         }
@@ -424,7 +426,7 @@ function ChatSession() {
                             socket.emit("sessionDisturbed", chatRoomId, "Could not request for QBER!");
                             toast.error("Could not request for QBER!");
                             setStatusWindow("");
-                            resetChatWindow();
+                            setTimeout(() => resetChatWindow(), 1000);
                         }
                     });
                 })
@@ -432,7 +434,7 @@ function ChatSession() {
                     socket.emit("joinAck", userId, false);
                     toast.error("Key generation failed!");
                     setStatusWindow("");
-                    resetChatWindow();
+                    setTimeout(() => resetChatWindow(), 1000);
                 });
             }
             else if (chatRole === "eavesdropper") {
@@ -441,7 +443,7 @@ function ChatSession() {
                     setToBusy();
                     if (!ack) {
                         setStatusWindow("");
-                        resetChatWindow();
+                        setTimeout(() => resetChatWindow(), 1000);
                         toast.info("Host did not acknowledge session!");
                     }
                     else {
@@ -476,9 +478,10 @@ function ChatSession() {
 
                                 socket.once("qberResult", (receivedQber) => {
                                     if (receivedQber > QBERThreshold) {
+                                        console.log(siftedQkeyBits.current);
                                         toast.error("Detected by BB84 QKD algorithm!");
                                         setStatusWindow("");
-                                        resetChatWindow();
+                                        setTimeout(() => resetChatWindow(), 1000);
                                     }
                                     else {
                                         setQBER(receivedQber);
@@ -509,7 +512,7 @@ function ChatSession() {
                             socket.emit("leave", chatRoomId);
                             toast.error("Unexpected error occurred!");
                             setStatusWindow("");
-                            resetChatWindow();
+                            setTimeout(() => resetChatWindow(), 1000);
                         }
                     }
                 });
@@ -521,7 +524,7 @@ function ChatSession() {
                     setToBusy();
                     if (!ack) {
                         setStatusWindow("");
-                        resetChatWindow();
+                        setTimeout(() => resetChatWindow(), 1000);
                         toast.info("Host did not acknowledge session!");
                     }
                     else {
@@ -581,11 +584,12 @@ function ChatSession() {
                                             });
                                         }
                                         else {
+                                            console.log(siftedQkeyBits.current);
                                             setStatusWindow("Session compromised!");
                                             socket.emit("leave", chatRoomId);
                                             toast.error("Session compromised!");
                                             setStatusWindow("");
-                                            resetChatWindow();
+                                            setTimeout(() => resetChatWindow(), 1000);
                                         }
                                     });
                                 });
@@ -598,7 +602,7 @@ function ChatSession() {
                                     toast.error("Key generation failed!");
                                     socket.emit("sessionDisturbed", chatRoomId, "Key Generation Failed!");
                                     setStatusWindow("");
-                                    resetChatWindow();
+                                    setTimeout(() => resetChatWindow(), 1000);
                                 }
                             }
                             finally {
@@ -622,7 +626,7 @@ function ChatSession() {
                     toast.error("Generated keys are not the same!");
                     toast.error("This means that sampling/error correction missed mismatched bits.");
                     
-                    resetChatWindow();
+                    setTimeout(() => resetChatWindow(), 1000);
                     return;
                 }
             }

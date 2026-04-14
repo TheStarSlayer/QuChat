@@ -102,8 +102,10 @@ async def random_num_generator(
         if bit_length % 156 != 0:
             adj_shots += no_of_shots
     
-    qc = QuantumCircuit(bit_length)
-    qc.h(range(bit_length))
+    adj_bitlength = 156 if bit_length > 156 else bit_length
+    
+    qc = QuantumCircuit(adj_bitlength)
+    qc.h(range(adj_bitlength))
     qc.measure_all()
     
     if (typeOfMachine == "sim"):
@@ -111,7 +113,7 @@ async def random_num_generator(
         sampler = BackendSamplerV2(backend=q_backend)
         isa_circuit = qc
     else:
-        q_backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
+        q_backend = q_service.least_busy(simulator=False, min_num_qubits=156)
         pm = generate_preset_pass_manager(backend=q_backend, optimization_level=1)
         sampler = Sampler(q_backend)
         isa_circuit = pm.run(qc)
@@ -125,10 +127,11 @@ async def random_num_generator(
 
     if adj_shots > no_of_shots:
         adj_list_of_rn = []
+        step = int(adj_shots/no_of_shots)
         
-        for i in range(0, adj_shots, adj_shots/no_of_shots):
+        for i in range(0, adj_shots, step):
             bitstring = ""
-            for j in range(adj_shots/no_of_shots):
+            for j in range(step):
                 bitstring += list_of_rn[i + j]
             adj_list_of_rn.append(bitstring[:bit_length])
 
@@ -148,8 +151,13 @@ async def random_indices_generator(
             content={ "message": "Does not support key length greater than 1023" }
         )
 
-    min_length = math.floor(0.1 * keyLength)
-    def_length = math.floor(0.15 * keyLength)
+    if keyLength - 156 < 20:
+        min_length = math.floor(0.1 * keyLength)
+        def_length = math.floor(0.15 * keyLength)
+    else:
+        min_length = math.floor(0.2 * keyLength)
+        def_length = math.floor(0.3 * keyLength)
+
     no_of_bits = max(1, math.ceil(math.log2(keyLength)))
     
     observed_indices = await random_indices_gen_helper(keyLength, typeOfMachine, def_length, no_of_bits)
@@ -330,8 +338,18 @@ async def generateAndRunBB84Circuit(
     
     og_bit_length = len(sender_bit_str)
     quantum_circuits = []
+    step = og_bit_length // 156
     
-    for i in range(og_bit_length // 156):
+    if typeOfMachine == "sim":
+        backend = AerSimulator()
+        sampler = BackendSamplerV2(backend=backend)
+        pm = None
+    else:
+        backend = q_service.least_busy(simulator=False, min_num_qubits=156)
+        sampler = Sampler(backend)
+        pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+    
+    for i in range(step):
         bit_length = 156
         
         start_index = bit_length * i
@@ -349,7 +367,7 @@ async def generateAndRunBB84Circuit(
     if og_bit_length % 156 != 0:
         bit_length = og_bit_length % 156
         
-        start_index = og_bit_length // 156
+        start_index = step * 156
         end_index = start_index + bit_length
         
         qc = quantum_circuit(
@@ -361,25 +379,23 @@ async def generateAndRunBB84Circuit(
         
         quantum_circuits.append(qc)
     
-    if (typeOfMachine == "sim"):
-        backend = AerSimulator()
-        sampler = BackendSamplerV2(backend=backend)
-        isa_circuit = [qc for qc in quantum_circuits]
-    else:
-        backend = q_service.least_busy(simulator=False, min_num_qubits=bit_length)
-        sampler = Sampler(backend)
-        pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
-        isa_circuit = [pm.run(qc) for qc in quantum_circuits]
-
-    job = sampler.run([isa_circuit], shots=1)
-    result = job.result()
+    isa_circuit = [qc if typeOfMachine == "sim" else pm.run(qc) for qc in quantum_circuits]
+    isa_circuits = []
+    
+    for i in range(0, len(isa_circuit), 3):
+        isa_circuits.append(isa_circuit[i:i+3])
+        
     observed_bits = ""
     
-    for i in range(len(isa_circuit)):
-        counts = result[i].data.c.get_counts()
-        key = list(counts.keys())[0]
-        meas = list(key)
-        observed_bits += ''.join(meas)[::-1]
+    for i in range(len(isa_circuits)):
+        job = sampler.run(isa_circuits[i], shots=1)
+        result = job.result()
+        
+        for i in range(len(isa_circuits[i])):
+            counts = result[i].data.c.get_counts()
+            key = list(counts.keys())[0]
+            meas = list(key)
+            observed_bits += ''.join(meas)[::-1]
         
     return observed_bits
 
