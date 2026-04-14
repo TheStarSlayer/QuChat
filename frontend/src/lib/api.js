@@ -15,7 +15,7 @@ apiCaller.interceptors.request.use((config) => {
 });
 
 apiCaller.interceptors.response.use(
-    null,
+    response => response,
     async (error) => {
         const originalRequest = error.config;
 
@@ -26,7 +26,7 @@ apiCaller.interceptors.response.use(
                 const authResponse = await authCaller.post("/refresh");
                 localStorage.setItem("access-token", `Bearer ${authResponse.data.accessToken}`);
                 originalRequest.headers.Authorization = localStorage.getItem("access-token");
-                return axios(originalRequest);
+                return apiCaller(originalRequest);
             } catch {
                 return Promise.reject(error);
             }

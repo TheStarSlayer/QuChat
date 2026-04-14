@@ -22,7 +22,7 @@ qcCaller.interceptors.request.use(async (config) => {
 });
 
 qcCaller.interceptors.response.use(
-    null,
+    response => response,
     async (error) => {
         const originalRequest = error.config;
 
@@ -33,7 +33,7 @@ qcCaller.interceptors.response.use(
                 const authResponse = await authCaller.post("/refresh");
                 localStorage.setItem("access-token", `Bearer ${authResponse.data.accessToken}`);
                 originalRequest.headers.Authorization = localStorage.getItem("access-token");
-                return axios(originalRequest);
+                return qcCaller(originalRequest);
             } catch {
                 return Promise.reject(error);
             }
