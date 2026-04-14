@@ -7,7 +7,8 @@ const cookieConfig = {
     httpOnly: true,
     secure: process.env.PROD === "true",
     sameSite: process.env.PROD === "true" ? "none" : "lax",
-    path: "/"
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000
 };
 
 export const signupController = async (req, res) => {
