@@ -48,18 +48,20 @@ function HomePage() {
     const [chatUsesSimulator, setChatUsesSimulator] = useState(null);
     const [chatRoomId, setChatRoomId] = useState(null);
     const [chatRole, setChatRole] = useState("");
-    const [statusWindow, setStatusWindow] = useState("Starting up session...");
 
     const chatSessionStates = {
         chatSessionTimer, setChatSessionTimer,
         chatEncryption, setChatEncryption,
         chatRoomId, setChatRoomId,
         chatRole, setChatRole,
-        statusWindow, setStatusWindow,
         chatUsesSimulator, setChatUsesSimulator
     };
 
     const navigate = useNavigate();
+    const initiatedSocket = useRef(false);
+    const initiatedOnlineUsers = useRef(false);
+    const initiatedRequests = useRef(false);
+    const initiatedEDR = useRef(false);
     const socketRef = useRef(null);
 
     function resetChatWindow() {
@@ -98,7 +100,11 @@ function HomePage() {
     }, [navigate]);
 
     useEffect(() => {
+        if (initiatedSocket.current)
+            return;
+
         if (userId) {
+            initiatedSocket.current = true;
             const socket = io({
                 auth: { token: localStorage.getItem("access-token")?.split(" ")[1] }
             });
@@ -128,13 +134,18 @@ function HomePage() {
             });
 
             return () => {
+                initiatedSocket.current = false;
                 socket.disconnect();
             };
         }
     }, [userId]);
 
     useEffect(() => {
+        if (initiatedOnlineUsers.current)
+            return;
+
         if (userId && !alreadyLoggedIn) {
+            initiatedOnlineUsers.current = true;
             apiCaller.get("/getOnlineUsers")
                 .then(r => setOnlineUsers(r.data.onlineUsers))
                 .catch(() => toast.error("Could not get online users!"));
@@ -153,12 +164,18 @@ function HomePage() {
             return () => {
                 socket.off("newUser");
                 socket.off("userLeft");
+                initiatedOnlineUsers.current = false;
             };
         }
     }, [userId, alreadyLoggedIn]);
 
     useEffect(() => {
+        if (initiatedRequests.current)
+            return;
+
         if (userId && !alreadyLoggedIn) {
+            initiatedRequests.current = true;
+
             apiCaller.get("/getMyActiveRequests")
                 .then(r => setRequestsToMe(r.data.requests || []))
                 .catch(() => toast.error("Could not get your active requests!"));
@@ -177,12 +194,18 @@ function HomePage() {
             return () => {
                 socket.off("requestToJoin");
                 socket.off("removeRequest");
+                initiatedRequests.current = false;
             };
         }
     }, [alreadyLoggedIn, userId]);
 
     useEffect(() => {
+        if (initiatedEDR.current)
+            return;
+
         if (userId && !alreadyLoggedIn) {
+            initiatedEDR.current = true;
+
             apiCaller.get("/getEavesdroppableRequests")
                 .then(r => setEavesdroppableRequests(r.data.requests || []))
                 .catch(() => toast.error("Could not get eavesdroppable requests!"));
@@ -206,6 +229,7 @@ function HomePage() {
                 socket.off("requestForED");
                 socket.off("removeRequestForED");
                 socket.off("removeRequest");
+                initiatedEDR.current = false;
             };
         }
     }, [alreadyLoggedIn, userId]);

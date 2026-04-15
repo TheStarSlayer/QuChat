@@ -12,7 +12,9 @@ function EavesdroppableRequests() {
 
     const [searchTermForEDR, setSearchTermForEDR] = useState("");
     const [subsetEDRequests, setSubsetEDRequests] = useState([...eavesdroppableRequests]);
-    const timeoutId = useRef("");
+
+    const timeoutId = useRef(null);
+    const isEavesdropping = useRef(null);
 
     const socket = socketRef.current;
 
@@ -31,52 +33,10 @@ function EavesdroppableRequests() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [eavesdroppableRequests]);
 
-    useEffect(() => {
-        return () => {
-            socket.off("response");
-            if (timeoutId.current !== -1) {
-                clearTimeout(timeoutId.current);
-                timeoutId.current = -1;                
-            }
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
     async function eavesdropRequest(request) {
         setWindowLoading("Sneaking...");
         try {
             await apiCaller.patch(`/eavesdrop/${request.sender}`);
-            
-            socket.emit("eavesdropRequest", request.sender);
-            setWindowLoading("Sneaked in, now waiting for response from receiver...");
-
-            timeoutId.current = setTimeout(() => {
-                toast.error("Did not catch any response!");
-                setWindowLoading("");
-            }, request.timeLimitInMs);
-
-            socket.once("response", (response) => {
-                clearTimeout(timeoutId.current);
-
-                if (response === "rejected") {
-                    toast.info("This request is rejected!");
-                    setWindowLoading("");
-                    socket.emit("leave");
-                }
-                else {
-                    if (request.typeOfEncryption === "bb84")
-                        socket.emit("updateOnResponseAcceptQC", userId);
-                    else
-                        socket.emit("updateOnResponseAccept", userId);
-
-                    setWindowLoading("");
-                    resetChatWindow();
-
-                    initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
-
-                    setShowChatSession(true);
-                }
-            });
         }
         catch (error) {
             if (error.response?.status === 404)
@@ -86,8 +46,73 @@ function EavesdroppableRequests() {
                 console.error(error);
             }
             setWindowLoading("");
+            return;
         }
+            
+        socket.emit("eavesdropRequest", request.sender);
+        setWindowLoading("Sneaked in, now waiting for response from receiver...");
+        isEavesdropping.current = request.sender;
+
+        timeoutId.current = setTimeout(() => {
+            timeoutId.current = null;
+
+            socket.off("response");
+            isEavesdropping.current = null;
+
+            toast.error("Did not catch any response!");
+            socket.emit("leave");
+            setWindowLoading("");
+        }, request.timeLimitInMs - (Date.now() - request.createdOn));
+
+        socket.once("response", (response) => {
+            clearTimeout(timeoutId.current);
+            timeoutId.current = null;
+
+            if (response === "rejected") {
+                toast.info("This request is rejected!");
+                setWindowLoading("");
+                socket.emit("leave");
+            }
+            else {
+                if (request.typeOfEncryption === "bb84")
+                    socket.emit("updateOnResponseAcceptQC", userId);
+                else
+                    socket.emit("updateOnResponseAccept", userId);
+
+                setWindowLoading("");
+                resetChatWindow();
+
+                initChatSession(request.sender, request.typeOfEncryption, request.chatSessionTimeInMin, "eavesdropper", request.isSimulator);
+
+                setShowChatSession(true);
+            }
+        });
     }
+
+    useEffect(() => {
+        function handleHostLeftEvent() {
+            socket.emit("leave", isEavesdropping.current);
+        }
+
+        (() => {
+            socket.once("requestFailed", handleHostLeftEvent);
+        })();
+
+        return () => {
+            socket.off("response");
+            socket.off("requestFailed", handleHostLeftEvent);
+            
+            isEavesdropping.current = null;
+
+            if (timeoutId.current !== null) {
+                clearTimeout(timeoutId.current);
+                timeoutId.current = null;
+                socket.emit("leave");
+                resetChatWindow();                
+            }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden"

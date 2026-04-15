@@ -41,10 +41,25 @@ function NewRequest() {
             const socket = socketRef.current;
 
             socket.emit("sendJoinRequest", request);
+
             setShowTimer(timeLimitInSec);
             setWindowLoading("");
 
             timeoutId.current = setTimeout(async () => {
+                socket.off("response");
+                
+                setShowTimer(-1);
+                clearTimeout(timeoutId.current);
+                timeoutId.current = null;
+
+                toast.error("Request timed out! Did not receive any response!");
+                try {
+                    await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                    toast.info("Request closed successfully!");
+                }
+                catch {
+                    toast.error("Could not close request successfully!");
+                }
                 resetChatWindow();
             }, timeLimitInSec * 1000);
 
@@ -79,10 +94,11 @@ function NewRequest() {
                 }
                 catch (error) {
                     console.error(error);
-
                     toast.error("Could not handle request successfully!");
-
                     setWindowLoading("");
+                    if (response === "accepted") {
+                        socket.emit("joinAck", userId, false);
+                    }
                     resetChatWindow();
                 }
             });
@@ -97,19 +113,20 @@ function NewRequest() {
     useEffect(() => {
         return () => {
             async function closeFunction() {
-                if (timeoutId.current !== null) {
-                    // eslint-disable-next-line react-hooks/exhaustive-deps
-                    const socket = socketRef.current;
-                    
-                    clearTimeout(timeoutId);
-                    timeoutId.current = null;
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+                const socket = socketRef.current;
+                socket.off("response");
 
+                if (timeoutId.current !== null) {
+                    clearTimeout(timeoutId.current);
+                    timeoutId.current = null;
                     setShowTimer(-1);
-                    socket.off("response");
+
                     resetChatWindow();
-                    toast.info("Request timed out!");
+
+                    toast.info("Request is cancelled!");
                     try {
-                        await apiCaller.patch("/finishRequest", { finishStatus: "timeout" });
+                        await apiCaller.patch("/finishRequest", { finishStatus: "cancelled" });
                         toast.info("Request closed successfully!");
                     }
                     catch {
