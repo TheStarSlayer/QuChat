@@ -208,7 +208,7 @@ def generateAndRunBB84Circuit(
 
     return (job_list, isa_circuits, typeOfMachine)
 
-@app.get("/distributeRawKey/{roomId}")
+@app.post("/distributeRawKey/{roomId}")
 async def distribute_raw_key(
     request: Request,
     roomId: str
@@ -488,12 +488,17 @@ def quantum_circuit(
         
     return qc
 
-@app.get("/getRandomIndices/{typeOfMachine}")
+class KeyLengthModel(BaseModel):
+    keyLength: int
+
+@app.post("/getRandomIndices/{typeOfMachine}")
 async def random_indices_generator(
     request: Request,
     typeOfMachine: Literal["sim", "hw"],
-    keyLength: int = 156
+    payload: KeyLengthModel
 ):
+    keyLength = payload.keyLength
+    
     if keyLength >= 1024:
         return JSONResponse(
             status_code=400,
@@ -628,11 +633,16 @@ def poll_for_random_numbers(
         return list_of_rn
     return "Try later"
     
-async def check_for_random_number(job_details):
-    await asyncio.sleep(5)
-    
+async def check_for_random_number(job_details):    
     job_id, adj_shots, no_of_shots, bit_length, typeOfMachine = job_details
     
+    if typeOfMachine == "sim":
+        poll_time = 2
+    else:
+        poll_time = 10
+        
+    await asyncio.sleep(int(poll_time/2))
+        
     counter = 0
     while True:
         random_numbers = poll_for_random_numbers(job_id, adj_shots, no_of_shots, bit_length, typeOfMachine)
@@ -650,7 +660,7 @@ async def check_for_random_number(job_details):
             return None
         
         counter += 1
-        await asyncio.sleep(10)
+        await asyncio.sleep(poll_time)
 
 def poll_for_circuit_results(job_list, typeOfMachine):
     for jid in job_list:
@@ -675,9 +685,14 @@ def poll_for_circuit_results(job_list, typeOfMachine):
 async def check_for_circuit_results(job_metadata):
     job_list, isa_circuits, typeOfMachine = job_metadata
     
-    await asyncio.sleep(5)
-    counter = 0
+    if typeOfMachine == "sim":
+        poll_time = 2
+    else:
+        poll_time = 10
+        
+    await asyncio.sleep(int(poll_time/2))
     
+    counter = 0
     while True:
         all_job_status = poll_for_circuit_results(job_list, typeOfMachine)
         if all_job_status == "Done":
@@ -691,7 +706,7 @@ async def check_for_circuit_results(job_metadata):
             return None
         
         counter += 1
-        await asyncio.sleep(10)
+        await asyncio.sleep(poll_time)
     
     observed_bits = ""
     
@@ -777,10 +792,10 @@ class ECInput(BaseModel):
     key: str
     
 @app.post("/generateECMetadata")
-async def generateECMetadata(ECInput: ECInput):
-    key_list = [int(i) for i in ECInput.key]
+async def generateECMetadata(payload: ECInput):
+    key_list = [int(i) for i in payload.key]
     encoded_key = await run_in_threadpool(bch.encode, key_list)
-    parity_bits = encoded_key[len(ECInput.key)::]
+    parity_bits = encoded_key[len(payload.key)::]
     
     parity_bits_str = ""
     for i in range(len(parity_bits)):
@@ -789,8 +804,8 @@ async def generateECMetadata(ECInput: ECInput):
     return JSONResponse(status_code=200, content={ "parityBits": parity_bits_str })
 
 @app.post("/correctErrorsInKey")
-async def correctErrors(ECInput: ECInput):
-    key_list = [int(i) for i in ECInput.key]
+async def correctErrors(payload: ECInput):
+    key_list = [int(i) for i in payload.key]
     corrected_key = await run_in_threadpool(bch.decode, key_list)
     
     corrected_key_str = ""

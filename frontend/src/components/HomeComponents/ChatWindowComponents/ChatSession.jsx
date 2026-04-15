@@ -372,7 +372,7 @@ function ChatSession() {
             if (chatRole === "host") {
                 setStatusWindow("Generating bits and bases...");
 
-                qcCaller.get(`/distributeRawKey/${userId}`)
+                qcCaller.post(`/distributeRawKey/${userId}`)
                 .then((res) => {
                     if (!sessionLoaded.current) return;
                     qkeyBases.current = res.data.bases;
@@ -390,8 +390,10 @@ function ChatSession() {
 
                         try {
                             setStatusWindow("Selecting random indices for QBER calculations...");
-                            const response = await qcCaller.get(
-                                `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}?keyLength=${siftedQkeyBits.current.length}`
+                            const response = await qcCaller.post(
+                                `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}`, {
+                                    keyLength: siftedQkeyBits.current.length
+                                }
                             );
 
                             if (!sessionLoaded.current) return;
@@ -460,7 +462,7 @@ function ChatSession() {
                         try {
                             setStatusWindow("Received acknowledgment of session...intercepting key...");
 
-                            const response = await qcCaller.get(`/distributeRawKey/${chatRoomId}`);
+                            const response = await qcCaller.post(`/distributeRawKey/${chatRoomId}`);
                             if (!sessionLoaded.current) return;
 
                             qkeyBases.current = response.data.bases;
@@ -544,6 +546,7 @@ function ChatSession() {
                     }
                     else {
                         setStatusWindow("Received acknowledgement, generating key...This may take some time!");
+                        let intervalTime = chatUsesSimulator ? 6000 : 9000;
 
                         tryAgainLater.current = 0;
                         isRequestInProgress.current = false;
@@ -554,7 +557,7 @@ function ChatSession() {
                             isRequestInProgress.current = true;
 
                             try {
-                                const response = await qcCaller.get(`/distributeRawKey/${chatRoomId}`);
+                                const response = await qcCaller.post(`/distributeRawKey/${chatRoomId}`);
                                 if (!sessionLoaded.current) return;
                                 
                                 clearInterval(intervalId.current);
@@ -625,7 +628,7 @@ function ChatSession() {
                             finally {
                                 isRequestInProgress.current = false;
                             }
-                        }, 7000);
+                        }, intervalTime);
                     }
                 });
             }
