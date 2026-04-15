@@ -1,3 +1,5 @@
+import time
+
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -257,14 +259,16 @@ async def distribute_raw_key(
             "roomId": roomId,
             "senderBases": None,
             "senderBits": None,
-            "generatingMetadata": True
+            "generatingMetadata": True,
+            "createdOn": int(time.time() * 1000)
         }
         circuit_metadata.insert_one(circuit_metadata_dict)
         
         job_db_dict = {
             "roomId": roomId,
             "hardwareJobs": [],
-            "simulatorJobs": []
+            "simulatorJobs": [],
+            "createdOn": int(time.time() * 1000)
         }
         job_db.insert_one(job_db_dict)
         
@@ -275,12 +279,14 @@ async def distribute_raw_key(
             if typeOfMachine == "sim":
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$push": { "simulatorJobs": job_id } }
+                    { "$push": { "simulatorJobs": job_id } },
+                    sort=[("createdOn", -1)]
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    {"$push": { "hardwareJobs": job_id }}
+                    {"$push": { "hardwareJobs": job_id }},
+                    sort=[("createdOn", -1)]
                 )
                 
             bitstrings = await check_for_random_number(bitstrings)
@@ -288,12 +294,14 @@ async def distribute_raw_key(
             if typeOfMachine == "sim":
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "simulatorJobs": job_id } }
+                    { "$pull": { "simulatorJobs": job_id } },
+                    sort=[("createdOn", -1)]
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "hardwareJobs": job_id } }
+                    { "$pull": { "hardwareJobs": job_id } },
+                    sort=[("createdOn", -1)]
                 )
                 
             if bitstrings is None:
@@ -304,7 +312,11 @@ async def distribute_raw_key(
             "senderBits": bitstrings[1],
             "generatingMetadata": False
         }
-        circuit_metadata.update_one({ "roomId": roomId }, { "$set": updated_metadata_dict })
+        circuit_metadata.update_one(
+            { "roomId": roomId },
+            { "$set": updated_metadata_dict },
+            sort=[("createdOn", -1)]
+        )
         
         return JSONResponse(
             status_code=200,
@@ -325,6 +337,7 @@ async def distribute_raw_key(
             {
                 "$set": { "generatingMetadata": True }
             },
+            sort=[("createdOn", -1)],
             projection=metadata_select_filter,
             return_document=ReturnDocument.BEFORE
         )
@@ -342,12 +355,14 @@ async def distribute_raw_key(
             if typeOfMachine == "sim":
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$push": { "simulatorJobs": job_id } }
+                    { "$push": { "simulatorJobs": job_id } },
+                    sort=[("createdOn", -1)]
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    {"$push": { "hardwareJobs": job_id }}
+                    {"$push": { "hardwareJobs": job_id }},
+                    sort=[("createdOn", -1)]
                 )
                 
             bases_list = await check_for_random_number(bases_list)
@@ -355,12 +370,14 @@ async def distribute_raw_key(
             if typeOfMachine == "sim":
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "simulatorJobs": job_id } }
+                    { "$pull": { "simulatorJobs": job_id } },
+                    sort=[("createdOn", -1)]
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "hardwareJobs": job_id } }
+                    { "$pull": { "hardwareJobs": job_id } },
+                    sort=[("createdOn", -1)]
                 )
                 
             if bases_list is None:
@@ -382,14 +399,16 @@ async def distribute_raw_key(
                     { "roomId": roomId },
                     { "$push": { "simulatorJobs": {
                         "$each": job_list   
-                    }}}
+                    }}},
+                    sort=[("createdOn", -1)]
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$push": { "hardwareJobs": {
                         "$each": job_list   
-                    }}}
+                    }}},
+                    sort=[("createdOn", -1)]
                 )
                 
             observed_bits = await check_for_circuit_results(observed_bits)
@@ -399,14 +418,16 @@ async def distribute_raw_key(
                     { "roomId": roomId },
                     { "$pull": { "simulatorJobs": {
                         "$in": job_list   
-                    }}}
+                    }}},
+                    sort=[("createdOn", -1)]
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$pull": { "hardwareJobs": {
                         "$in": job_list   
-                    }}}
+                    }}},
+                    sort=[("createdOn", -1)]
                 )
                 
             if observed_bits is None:
@@ -418,7 +439,11 @@ async def distribute_raw_key(
                 "senderBits": observed_bits,
                 "generatingMetadata": False
             }
-            circuit_metadata.update_one({ "roomId": roomId }, { "$set": updated_metadata_dict })
+            circuit_metadata.update_one(
+                { "roomId": roomId },
+                { "$set": updated_metadata_dict },
+                sort=[("createdOn", -1)]
+            )
                     
         if userId == roomRequest["receiver"]:
             circuit_metadata.delete_one({ "roomId": roomId })        
@@ -526,12 +551,14 @@ async def random_indices_gen_helper(
         if typeOfMachine == "sim":
             job_db.update_one(
                 { "roomId": roomId },
-                { "$push": { "simulatorJobs": job_id } }
+                { "$push": { "simulatorJobs": job_id } },
+                sort=[("createdOn", -1)]
             )
         else:
             job_db.update_one(
                 { "roomId": roomId },
-                {"$push": { "hardwareJobs": job_id }}
+                {"$push": { "hardwareJobs": job_id }},
+                sort=[("createdOn", -1)]
             )
             
         indices_bitstring = await check_for_random_number(indices_bitstring)
@@ -539,12 +566,14 @@ async def random_indices_gen_helper(
         if typeOfMachine == "sim":
             job_db.update_one(
                 { "roomId": roomId },
-                { "$pull": { "simulatorJobs": job_id } }
+                { "$pull": { "simulatorJobs": job_id } },
+                sort=[("createdOn", -1)]
             )
         else:
             job_db.update_one(
                 { "roomId": roomId },
-                { "$pull": { "hardwareJobs": job_id } }
+                { "$pull": { "hardwareJobs": job_id } },
+                sort=[("createdOn", -1)]
             )
         
         if indices_bitstring is None:
@@ -712,10 +741,11 @@ def deleteMetadataHelper(roomId: str):
     circuit_metadata = database["circuit_metadata"]
     job_db = database["job_db"]
     
-    circuit_metadata.delete_one({ 'roomId': roomId })
-    room_job = job_db.find_one_and_delete({ "roomId": roomId })
+    circuit_metadata.delete_many({ 'roomId': roomId })
+    room_jobs = job_db.find({ "roomId": roomId })
+    job_db.delete_many({ 'roomId': roomId })
     
-    if room_job is not None:
+    for room_job in room_jobs:
         simulator_jobs = room_job["simulatorJobs"]
         hardware_jobs = room_job["hardwareJobs"]
         
@@ -735,7 +765,7 @@ def deleteMetadataHelper(roomId: str):
                 delete_job(job_id, "hw")
             except:
                 print("Could not close job ", job_id)
-
+                    
 @app.delete("/deleteMetadata/{roomId}")
 async def deleteMetadata(
     roomId: str
