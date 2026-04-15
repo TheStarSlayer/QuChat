@@ -284,8 +284,6 @@ async def distribute_raw_key(
                 )
                 
             bitstrings = await check_for_random_number(bitstrings)
-            if bitstrings is None:
-                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
             
             if typeOfMachine == "sim":
                 job_db.update_one(
@@ -295,8 +293,11 @@ async def distribute_raw_key(
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "simulatorJobs": job_id } }
+                    { "$pull": { "hardwareJobs": job_id } }
                 )
+                
+            if bitstrings is None:
+                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
         
         updated_metadata_dict = {
             "senderBases": bitstrings[0],
@@ -350,8 +351,6 @@ async def distribute_raw_key(
                 )
                 
             bases_list = await check_for_random_number(bases_list)
-            if bases_list is None:
-                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
             
             if typeOfMachine == "sim":
                 job_db.update_one(
@@ -361,9 +360,12 @@ async def distribute_raw_key(
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "simulatorJobs": job_id } }
+                    { "$pull": { "hardwareJobs": job_id } }
                 )
-            
+                
+            if bases_list is None:
+                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
+
         bases = bases_list[0]
         observed_bits = generateAndRunBB84Circuit(
             sender_bit_str=metadata["senderBits"],
@@ -374,6 +376,7 @@ async def distribute_raw_key(
 
         if not isinstance(observed_bits, str):
             job_list = observed_bits[0]
+            
             if typeOfMachine == "sim":
                 job_db.update_one(
                     { "roomId": roomId },
@@ -384,14 +387,12 @@ async def distribute_raw_key(
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$push": { "simulatorJobs": {
+                    { "$push": { "hardwareJobs": {
                         "$each": job_list   
                     }}}
                 )
                 
             observed_bits = await check_for_circuit_results(observed_bits)
-            if observed_bits is None:
-                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
             
             if typeOfMachine == "sim":
                 job_db.update_one(
@@ -403,11 +404,14 @@ async def distribute_raw_key(
             else:
                 job_db.update_one(
                     { "roomId": roomId },
-                    { "$pull": { "simulatorJobs": {
+                    { "$pull": { "hardwareJobs": {
                         "$in": job_list   
                     }}}
                 )
-            
+                
+            if observed_bits is None:
+                return JSONResponse(status_code=408, content={ "error": "Request timed out" })
+
         if userId == roomRequest["eavesdropperId"]:
             updated_metadata_dict = {
                 "senderBases": bases,
@@ -531,8 +535,6 @@ async def random_indices_gen_helper(
             )
             
         indices_bitstring = await check_for_random_number(indices_bitstring)
-        if indices_bitstring is None:
-            return None
         
         if typeOfMachine == "sim":
             job_db.update_one(
@@ -542,8 +544,11 @@ async def random_indices_gen_helper(
         else:
             job_db.update_one(
                 { "roomId": roomId },
-                { "$pull": { "simulatorJobs": job_id } }
+                { "$pull": { "hardwareJobs": job_id } }
             )
+        
+        if indices_bitstring is None:
+            return None
             
     for bitstring in indices_bitstring:
         index = 0
@@ -675,7 +680,8 @@ async def check_for_circuit_results(job_metadata):
             meas = list(key)
             observed_bits += ''.join(meas)[::-1]
         
-        del simulator_job_store[job_list[i]]
+        if typeOfMachine == "sim":
+            del simulator_job_store[job_list[i]]
                 
     return observed_bits
             
@@ -713,13 +719,16 @@ def deleteMetadataHelper(roomId: str):
         simulator_jobs = room_job["simulatorJobs"]
         hardware_jobs = room_job["hardwareJobs"]
         
-        for job_id in simulator_jobs:
+        for job_id in simulator_jobs:   
             try:
                 delete_job(job_id, "sim")
             except:
                 print("Could not close job ", job_id)
-                
-            del simulator_job_store[job_id] 
+            
+            try:
+                del simulator_job_store[job_id]
+            except:
+                print("Already deleted!") 
             
         for job_id in hardware_jobs:
             try:
