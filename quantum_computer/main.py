@@ -237,7 +237,7 @@ async def distribute_raw_key(
     roomRequest = requests.find_one(
         request_find_filter,
         projection=request_select_filter,
-        sort=[("createdOn", -1)]
+        sort={"createdOn": -1}
     )
     
     if not roomRequest:
@@ -280,13 +280,13 @@ async def distribute_raw_key(
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$push": { "simulatorJobs": job_id } },
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
                     {"$push": { "hardwareJobs": job_id }},
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
                 
             bitstrings = await check_for_random_number(bitstrings)
@@ -295,13 +295,13 @@ async def distribute_raw_key(
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$pull": { "simulatorJobs": job_id } },
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$pull": { "hardwareJobs": job_id } },
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
                 
             if bitstrings is None:
@@ -315,7 +315,7 @@ async def distribute_raw_key(
         circuit_metadata.update_one(
             { "roomId": roomId },
             { "$set": updated_metadata_dict },
-            sort=[("createdOn", -1)]
+            sort={"createdOn": -1}
         )
         
         return JSONResponse(
@@ -337,7 +337,7 @@ async def distribute_raw_key(
             {
                 "$set": { "generatingMetadata": True }
             },
-            sort=[("createdOn", -1)],
+            sort={"createdOn": -1},
             projection=metadata_select_filter,
             return_document=ReturnDocument.BEFORE
         )
@@ -356,13 +356,13 @@ async def distribute_raw_key(
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$push": { "simulatorJobs": job_id } },
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
                     {"$push": { "hardwareJobs": job_id }},
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
                 
             bases_list = await check_for_random_number(bases_list)
@@ -371,13 +371,13 @@ async def distribute_raw_key(
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$pull": { "simulatorJobs": job_id } },
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
             else:
                 job_db.update_one(
                     { "roomId": roomId },
                     { "$pull": { "hardwareJobs": job_id } },
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
                 
             if bases_list is None:
@@ -400,7 +400,7 @@ async def distribute_raw_key(
                     { "$push": { "simulatorJobs": {
                         "$each": job_list   
                     }}},
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
             else:
                 job_db.update_one(
@@ -408,7 +408,7 @@ async def distribute_raw_key(
                     { "$push": { "hardwareJobs": {
                         "$each": job_list   
                     }}},
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
                 
             observed_bits = await check_for_circuit_results(observed_bits)
@@ -419,7 +419,7 @@ async def distribute_raw_key(
                     { "$pull": { "simulatorJobs": {
                         "$in": job_list   
                     }}},
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
             else:
                 job_db.update_one(
@@ -427,7 +427,7 @@ async def distribute_raw_key(
                     { "$pull": { "hardwareJobs": {
                         "$in": job_list   
                     }}},
-                    sort=[("createdOn", -1)]
+                    sort={"createdOn": -1}
                 )
                 
             if observed_bits is None:
@@ -442,7 +442,7 @@ async def distribute_raw_key(
             circuit_metadata.update_one(
                 { "roomId": roomId },
                 { "$set": updated_metadata_dict },
-                sort=[("createdOn", -1)]
+                sort={"createdOn": -1}
             )
                     
         if userId == roomRequest["receiver"]:
@@ -552,13 +552,13 @@ async def random_indices_gen_helper(
             job_db.update_one(
                 { "roomId": roomId },
                 { "$push": { "simulatorJobs": job_id } },
-                sort=[("createdOn", -1)]
+                sort={"createdOn": -1}
             )
         else:
             job_db.update_one(
                 { "roomId": roomId },
                 {"$push": { "hardwareJobs": job_id }},
-                sort=[("createdOn", -1)]
+                sort={"createdOn": -1}
             )
             
         indices_bitstring = await check_for_random_number(indices_bitstring)
@@ -567,13 +567,13 @@ async def random_indices_gen_helper(
             job_db.update_one(
                 { "roomId": roomId },
                 { "$pull": { "simulatorJobs": job_id } },
-                sort=[("createdOn", -1)]
+                sort={"createdOn": -1}
             )
         else:
             job_db.update_one(
                 { "roomId": roomId },
                 { "$pull": { "hardwareJobs": job_id } },
-                sort=[("createdOn", -1)]
+                sort={"createdOn": -1}
             )
         
         if indices_bitstring is None:
