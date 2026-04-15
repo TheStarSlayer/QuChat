@@ -9,7 +9,6 @@ const qcCaller = axios.create({
     withCredentials: true
 });
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Add auth token dynamically on every request
 qcCaller.interceptors.request.use(async (config) => {
@@ -17,7 +16,6 @@ qcCaller.interceptors.request.use(async (config) => {
     if (token)
         config.headers.Authorization = token;
 
-    await delay(500);
     return config;
 });
 
