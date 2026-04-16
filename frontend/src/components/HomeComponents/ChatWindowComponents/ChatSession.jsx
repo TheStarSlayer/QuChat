@@ -343,6 +343,10 @@ function ChatSession() {
         sessionLoaded.current = true;
         const socket = socketRef.current;
 
+        function rareHandleRequestFailedEvent() {
+            socket.emit("leave", chatRoomId);
+        }
+
         if (chatEncryption === "none") {
             setToBusy();
 
@@ -665,6 +669,8 @@ function ChatSession() {
             );
         });
 
+        socket.once("requestFailed", rareHandleRequestFailedEvent);
+
         socket.on("keyGenFailed", async (msg) => {
             if (userId !== chatRoomId)
                 socket.emit("leave", chatRoomId);
@@ -711,6 +717,7 @@ function ChatSession() {
             socket.off("sessionDisturbed"); socket.off("keyGenFailed");
             socket.off("ackFromHost"); socket.off("bases"); socket.off("qberResult");
             socket.off("keyCorrected"); socket.off("qber"); socket.off("parity");
+            socket.off("requestFailed", rareHandleRequestFailedEvent);
 
             if (intervalId.current != null) {
                 clearInterval(intervalId.current);
