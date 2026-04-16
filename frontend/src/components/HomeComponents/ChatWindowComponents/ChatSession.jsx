@@ -391,7 +391,8 @@ function ChatSession() {
                         try {
                             setStatusWindow("Selecting random indices for QBER calculations...");
                             const response = await qcCaller.post(
-                                `/getRandomIndices/${chatUsesSimulator ? "sim" : "hw"}`, {
+                                `/generateRandomIndices`, {
+                                    typeOfMachine: chatUsesSimulator ? "sim" : "hw",
                                     keyLength: siftedQkeyBits.current.length
                                 }
                             );

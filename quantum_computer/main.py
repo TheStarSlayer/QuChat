@@ -47,7 +47,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 protected_routes = [
-    "distributeRawKey", "deleteMetadata", "getRandomIndices",
+    "distributeRawKey", "deleteMetadata", "generateRandomIndices",
     "generateECMetadata", "correctErrorsInKey"
 ]
 
@@ -489,15 +489,16 @@ def quantum_circuit(
     return qc
 
 class KeyLengthModel(BaseModel):
+    typeOfMachine: str
     keyLength: int
 
-@app.post("/getRandomIndices/{typeOfMachine}")
+@app.post("/generateRandomIndices")
 async def random_indices_generator(
     request: Request,
-    typeOfMachine: Literal["sim", "hw"],
     payload: KeyLengthModel
 ):
     keyLength = payload.keyLength
+    typeOfMachine = payload.typeOfMachine
     
     if keyLength >= 1024:
         return JSONResponse(
