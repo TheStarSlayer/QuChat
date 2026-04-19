@@ -381,13 +381,13 @@ function ChatSession() {
             if (chatRole === "host") {
                 setStatusWindow("Generating bits and bases...");
 
-                qcCaller.post(`/distributeRawKey/${userId}`)
+                qcCaller.post(`/distributeRawKey/${chatRoomId}`)
                 .then((res) => {
                     if (!sessionLoaded.current) return;
                     qkeyBases.current = res.data.bases;
                     qkeyBits.current = res.data.bits;          
                     setStatusWindow("Bits and bases generated successfully!")
-                    socket.emit("joinAck", userId, true);
+                    socket.emit("joinAck", chatRoomId, true);
                     setToBusy();
 
                     socket.once("bases", async (bases) => {                      
@@ -466,7 +466,7 @@ function ChatSession() {
                     });
                 })
                 .catch(() => {
-                    socket.emit("joinAck", userId, false);
+                    socket.emit("joinAck", chatRoomId, false);
                     toast.error("Key generation failed!");
                     setTimeout(() => resetChatWindow(), 1000);
                 });
@@ -534,7 +534,7 @@ function ChatSession() {
 
                                             socket.once("parity", async (parityBits) => {
                                                 setStatusWindow("Correcting key...");
-                                                
+
                                                 const bchStart = performance.now();
                                                 const keyWithParity = siftedQkeyBits.current + parityBits;
                                                 const res = await qcCaller.post("/correctErrorsInKey", {
@@ -631,6 +631,7 @@ function ChatSession() {
                                                 socket.once("parity", async (parityBits) => {
                                                     setStatusWindow("Correcting key...");
 
+                                                    const bchStart = performance.now();
                                                     const keyWithParity = siftedQkeyBits.current + parityBits;
 
                                                     const res = await qcCaller.post("/correctErrorsInKey", {
@@ -639,6 +640,8 @@ function ChatSession() {
                                                     if (!sessionLoaded.current) return;
 
                                                     siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
+                                                    const bchEnd = performance.now();
+                                                    console.log(`Correcting key: ${bchEnd - bchStart} ms`);
 
                                                     socket.emit("keyCorrected", chatRoomId);
                                                     sessionStarted(start);
