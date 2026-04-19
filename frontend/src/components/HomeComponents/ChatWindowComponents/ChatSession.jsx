@@ -90,14 +90,14 @@ function ChatSession() {
     }
 
     async function sessionStarted() {
+        if (chatEncryption === "bb84")
+            quantumKey.current = await getAESKey(siftedQkeyBits.current);
+        
         setFreeToChat(true);
         if (chatRole !== "eavesdropper")
             toast.success("You are free to chat!");
         else
             toast.success("Eavesdropped successfully! You can now secretly view the chat!");
-
-        if (chatEncryption === "bb84")
-            quantumKey.current = await getAESKey(siftedQkeyBits.current);
     }
 
     async function sendMessage() {
@@ -414,22 +414,30 @@ function ChatSession() {
                                 
                                 if (receivedQber <= QBERThreshold && receivedQber !== null) {
                                     setQBER(receivedQber);
-                                    setStatusWindow(`QBER is ${receivedQber}...Generating BCH ECC metadata...`);
 
-                                    const res = await qcCaller.post("/generateECMetadata", {
-                                        key: siftedQkeyBits.current
-                                    });
-                                    if (!sessionLoaded.current) return;
-
-                                    const parityBits = res.data.parityBits;
-
-                                    setStatusWindow("Waiting for receiver to correct their key...");
-                                    socket.emit("sendParityBits", chatRoomId, parityBits);
-
-                                    socket.once("keyCorrected", () => {
+                                    if (chatUsesSimulator) {
+                                        setStatusWindow(`QBER is ${receivedQber}...Starting session...`);
                                         socket.emit("updateOnQBERAccept", chatRoomId);
                                         sessionStarted();
-                                    });
+                                    }
+                                    else {
+                                        setStatusWindow(`QBER is ${receivedQber}...Generating BCH ECC metadata...`);
+
+                                        const res = await qcCaller.post("/generateECMetadata", {
+                                            key: siftedQkeyBits.current
+                                        });
+                                        if (!sessionLoaded.current) return;
+
+                                        const parityBits = res.data.parityBits;
+
+                                        setStatusWindow("Waiting for receiver to correct their key...");
+                                        socket.emit("sendParityBits", chatRoomId, parityBits);
+
+                                        socket.once("keyCorrected", () => {
+                                            socket.emit("updateOnQBERAccept", chatRoomId);
+                                            sessionStarted();
+                                        });
+                                    }
                                 }
                                 else {
                                     setStatusWindow("Session compromised! QBER too high.");
@@ -500,32 +508,42 @@ function ChatSession() {
                                 socket.once("qberResult", (receivedQber) => {
                                     if (receivedQber > QBERThreshold) {
                                         toast.error("Detected by BB84 QKD algorithm!");
-                                        
                                         setTimeout(() => resetChatWindow(), 1000);
                                     }
                                     else {
                                         setQBER(receivedQber);
-                                        setStatusWindow(`QBER is ${receivedQber}...Waiting for host to generate BCH ECC metadata...`);
                                         
-                                        socket.once("parity", async (parityBits) => {
-                                            setStatusWindow("Correcting key...");
+                                        if (chatUsesSimulator) {
+                                            setStatusWindow(`QBER is ${receivedQber}...Starting session...`);
+                                            socket.emit("updateOnQBERAccept", chatRoomId);
+                                            toast.success("Eavesdropping successfully!");
+                                            sessionStarted();
+                                        }
+                                        else {
+                                            setStatusWindow(`QBER is ${receivedQber}...Waiting for host to generate BCH ECC metadata...`);
 
-                                            const keyWithParity = siftedQkeyBits.current + parityBits;
-                                            const res = await qcCaller.post("/correctErrorsInKey", {
-                                                key: keyWithParity
+                                            socket.once("parity", async (parityBits) => {
+                                                setStatusWindow("Correcting key...");
+
+                                                const keyWithParity = siftedQkeyBits.current + parityBits;
+                                                const res = await qcCaller.post("/correctErrorsInKey", {
+                                                    key: keyWithParity
+                                                });
+                                                if (!sessionLoaded.current) return;
+
+                                                siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
+
+                                                setStatusWindow("Waiting for receiver to correct their key...");
+
+                                                socket.once("keyCorrected", () => {
+                                                    socket.emit("updateOnQBERAccept", chatRoomId);
+                                                    toast.success("Eavesdropping successfully!");
+                                                    sessionStarted();
+                                                });
                                             });
-                                            if (!sessionLoaded.current) return;
+                                        }
 
-                                            siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
-
-                                            setStatusWindow("Waiting for receiver to correct their key...");
-
-                                            socket.once("keyCorrected", () => {
-                                                socket.emit("updateOnQBERAccept", chatRoomId);
-                                                toast.success("Eavesdropping successfully!");
-                                                sessionStarted();
-                                            });
-                                        });
+                                        
                                     }
                                 });
                             });
@@ -590,23 +608,29 @@ function ChatSession() {
                                         socket.emit("shareQBERResult", chatRoomId, calcQber);
                                         if (calcQber <= QBERThreshold) {
                                             setQBER(calcQber);
-                                            setStatusWindow(`QBER is ${calcQber}...Waiting for host to generate BCH ECC metadata...`);
 
-                                            socket.once("parity", async (parityBits) => {
-                                                setStatusWindow("Correcting key...");
-
-                                                const keyWithParity = siftedQkeyBits.current + parityBits;
-
-                                                const res = await qcCaller.post("/correctErrorsInKey", {
-                                                    key: keyWithParity
-                                                });
-                                                if (!sessionLoaded.current) return;
-
-                                                siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
-
-                                                socket.emit("keyCorrected", chatRoomId);
+                                            if (chatUsesSimulator) {
+                                                setStatusWindow(`QBER is ${calcQber}...Starting session...`);
                                                 sessionStarted();
-                                            });
+                                            }
+                                            else {
+                                                setStatusWindow(`QBER is ${calcQber}...Waiting for host to generate BCH ECC metadata...`);
+                                                socket.once("parity", async (parityBits) => {
+                                                    setStatusWindow("Correcting key...");
+
+                                                    const keyWithParity = siftedQkeyBits.current + parityBits;
+
+                                                    const res = await qcCaller.post("/correctErrorsInKey", {
+                                                        key: keyWithParity
+                                                    });
+                                                    if (!sessionLoaded.current) return;
+
+                                                    siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
+
+                                                    socket.emit("keyCorrected", chatRoomId);
+                                                    sessionStarted();
+                                                });
+                                            }
                                         }
                                         else {
                                             setStatusWindow("Session compromised!");
