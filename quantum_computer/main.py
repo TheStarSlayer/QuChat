@@ -1,6 +1,6 @@
 import time
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Header, Request, Response, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Literal
@@ -46,10 +46,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+"""
 protected_routes = [
     "distributeRawKey", "deleteMetadata", "generateRandomIndices",
     "generateECMetadata", "correctErrorsInKey"
 ]
+"""
 
 db_client = pymongo.MongoClient(os.getenv("MONGODB_CONN"))
 database = db_client["test"]
@@ -62,33 +65,33 @@ simulator_job_store = {}
 
 bch = BCHCode(2, 511, 15, 1)
 
-@app.middleware("http")
-async def authorize_call(
-    request: Request,
-    call_next
-):
-    if request.method == "OPTIONS":
-        return await call_next(request)
-    
-    if request.url.path.split("/")[1] not in protected_routes:
-        return await call_next(request)
-    
-    auth_header = request.headers.get("Authorization")
-    
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return JSONResponse(status_code=400, content={"error": "Unauthorized"})
+def get_current_user(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing token"
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token format"
+        )
+
+    token = authorization.split(" ")[1]
 
     import jwt
-    
-    token = auth_header.split(" ")[1]
     try:
-        payload = jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
-    except:
-        print("jwt expired")
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+        payload = jwt.decode(
+            token,
+            os.getenv("ACCESS_TOKEN_SECRET"),
+            algorithms=["HS256"]
+        )
 
-    request.state.user = payload["userId"]
-    return await call_next(request)
+        return payload["userId"]
+
+    except:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 @app.get("/rng/{typeOfMachine}")
 def random_num_generator(
@@ -210,8 +213,8 @@ def generateAndRunBB84Circuit(
 
 @app.post("/distributeRawKey/{roomId}")
 async def distribute_raw_key(
-    request: Request,
-    roomId: str
+    roomId: str,
+    userId = Depends(get_current_user)
 ):
     """
         AES requires a minimum of 128 bit key
@@ -247,7 +250,6 @@ async def distribute_raw_key(
         )
         
     typeOfMachine = "sim" if roomRequest["isSimulator"] else "hw"
-    userId = request.state.user
     
     circuit_metadata = database["circuit_metadata"]
     job_db = database["job_db"]
@@ -494,8 +496,8 @@ class KeyLengthModel(BaseModel):
 
 @app.post("/generateRandomIndices")
 async def random_indices_generator(
-    request: Request,
-    payload: KeyLengthModel
+    payload: KeyLengthModel,
+    roomId = Depends(get_current_user)
 ):
     keyLength = payload.keyLength
     typeOfMachine = payload.typeOfMachine
@@ -514,8 +516,6 @@ async def random_indices_generator(
         def_length = math.floor(0.3 * keyLength)
 
     no_of_bits = max(1, math.ceil(math.log2(keyLength)))
-    
-    roomId = request.state.user
     
     observed_indices = await random_indices_gen_helper(keyLength, typeOfMachine, def_length, no_of_bits, roomId)
     if observed_indices is None:
@@ -784,7 +784,8 @@ def deleteMetadataHelper(roomId: str):
                     
 @app.delete("/deleteMetadata/{roomId}")
 async def deleteMetadata(
-    roomId: str
+    roomId: str,
+    _ = Depends(get_current_user)
 ):
     deleteMetadataHelper(roomId)
     return Response(status_code=204)
@@ -793,7 +794,10 @@ class ECInput(BaseModel):
     key: str
     
 @app.post("/generateECMetadata")
-async def generateECMetadata(payload: ECInput):
+async def generateECMetadata(
+    payload: ECInput,
+    _ = Depends(get_current_user)
+):
     key_list = [int(i) for i in payload.key]
     encoded_key = await run_in_threadpool(bch.encode, key_list)
     parity_bits = encoded_key[len(payload.key)::]
@@ -805,7 +809,10 @@ async def generateECMetadata(payload: ECInput):
     return JSONResponse(status_code=200, content={ "parityBits": parity_bits_str })
 
 @app.post("/correctErrorsInKey")
-async def correctErrors(payload: ECInput):
+async def correctErrors(
+    payload: ECInput,
+    _ = Depends(get_current_user)
+):
     key_list = [int(i) for i in payload.key]
     corrected_key = await run_in_threadpool(bch.decode, key_list)
     
