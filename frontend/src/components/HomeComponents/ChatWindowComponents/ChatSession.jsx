@@ -89,15 +89,18 @@ function ChatSession() {
         return Math.trunc(qber * 1000) / 1000;
     }
 
-    async function sessionStarted() {
+    async function sessionStarted(start) {
         if (chatEncryption === "bb84")
             quantumKey.current = await getAESKey(siftedQkeyBits.current);
-        
+
         setFreeToChat(true);
         if (chatRole !== "eavesdropper")
             toast.success("You are free to chat!");
         else
             toast.success("Eavesdropped successfully! You can now secretly view the chat!");
+
+        const end = performance.now();
+        console.log(`Took ${end - start} ms`);
     }
 
     async function sendMessage() {
@@ -371,6 +374,7 @@ function ChatSession() {
             }
         }
         else {
+            const start = performance.now();
             setStatusWindow("Securing session...");
 
             if (chatRole === "host") {
@@ -411,14 +415,15 @@ function ChatSession() {
 
                             socket.once("qberResult", async (receivedQber) => {
                                 toast.info(`QBER value: ${receivedQber}`);
-                                
+                                console.log(`QBER value: ${receivedQber}`);
+
                                 if (receivedQber <= QBERThreshold && receivedQber !== null) {
                                     setQBER(receivedQber);
 
                                     if (chatUsesSimulator) {
                                         setStatusWindow(`QBER is ${receivedQber}...Starting session...`);
                                         socket.emit("updateOnQBERAccept", chatRoomId);
-                                        sessionStarted();
+                                        sessionStarted(start);
                                     }
                                     else {
                                         setStatusWindow(`QBER is ${receivedQber}...Generating BCH ECC metadata...`);
@@ -435,7 +440,7 @@ function ChatSession() {
 
                                         socket.once("keyCorrected", () => {
                                             socket.emit("updateOnQBERAccept", chatRoomId);
-                                            sessionStarted();
+                                            sessionStarted(start);
                                         });
                                     }
                                 }
@@ -517,7 +522,7 @@ function ChatSession() {
                                             setStatusWindow(`QBER is ${receivedQber}...Starting session...`);
                                             socket.emit("updateOnQBERAccept", chatRoomId);
                                             toast.success("Eavesdropping successfully!");
-                                            sessionStarted();
+                                            sessionStarted(start);
                                         }
                                         else {
                                             setStatusWindow(`QBER is ${receivedQber}...Waiting for host to generate BCH ECC metadata...`);
@@ -538,7 +543,7 @@ function ChatSession() {
                                                 socket.once("keyCorrected", () => {
                                                     socket.emit("updateOnQBERAccept", chatRoomId);
                                                     toast.success("Eavesdropping successfully!");
-                                                    sessionStarted();
+                                                    sessionStarted(start);
                                                 });
                                             });
                                         }
@@ -611,7 +616,7 @@ function ChatSession() {
 
                                             if (chatUsesSimulator) {
                                                 setStatusWindow(`QBER is ${calcQber}...Starting session...`);
-                                                sessionStarted();
+                                                sessionStarted(start);
                                             }
                                             else {
                                                 setStatusWindow(`QBER is ${calcQber}...Waiting for host to generate BCH ECC metadata...`);
@@ -628,7 +633,7 @@ function ChatSession() {
                                                     siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
 
                                                     socket.emit("keyCorrected", chatRoomId);
-                                                    sessionStarted();
+                                                    sessionStarted(start);
                                                 });
                                             }
                                         }
@@ -662,7 +667,6 @@ function ChatSession() {
                 });
             }
         }
-
         socket.on("message", async (message) => {
             let receivedMessage = message.message;
             
