@@ -374,6 +374,7 @@ function ChatSession() {
             }
         }
         else {
+            console.log(`Time: ${new Date().toLocaleTimeString()}`);
             const start = performance.now();
             setStatusWindow("Securing session...");
 
@@ -427,10 +428,13 @@ function ChatSession() {
                                     }
                                     else {
                                         setStatusWindow(`QBER is ${receivedQber}...Generating BCH ECC metadata...`);
-
+                                        const bchStart = performance.now();
                                         const res = await qcCaller.post("/generateECMetadata", {
                                             key: siftedQkeyBits.current
                                         });
+                                        const bchEnd = performance.now();
+                                        console.log(`Generating metadata: ${bchEnd - bchStart} ms`);
+
                                         if (!sessionLoaded.current) return;
 
                                         const parityBits = res.data.parityBits;
@@ -442,6 +446,7 @@ function ChatSession() {
                                             socket.emit("updateOnQBERAccept", chatRoomId);
                                             sessionStarted(start);
                                         });
+
                                     }
                                 }
                                 else {
@@ -529,7 +534,8 @@ function ChatSession() {
 
                                             socket.once("parity", async (parityBits) => {
                                                 setStatusWindow("Correcting key...");
-
+                                                
+                                                const bchStart = performance.now();
                                                 const keyWithParity = siftedQkeyBits.current + parityBits;
                                                 const res = await qcCaller.post("/correctErrorsInKey", {
                                                     key: keyWithParity
@@ -537,6 +543,8 @@ function ChatSession() {
                                                 if (!sessionLoaded.current) return;
 
                                                 siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
+                                                const bchEnd = performance.now();
+                                                console.log(`Correcting key: ${bchEnd - bchStart} ms`);
 
                                                 setStatusWindow("Waiting for receiver to correct their key...");
 
