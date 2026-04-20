@@ -89,7 +89,7 @@ function ChatSession() {
         return Math.trunc(qber * 1000) / 1000;
     }
 
-    async function sessionStarted(start) {
+    async function sessionStarted() {
         if (chatEncryption === "bb84")
             quantumKey.current = await getAESKey(siftedQkeyBits.current);
 
@@ -98,9 +98,6 @@ function ChatSession() {
             toast.success("You are free to chat!");
         else
             toast.success("Eavesdropped successfully! You can now secretly view the chat!");
-
-        const end = performance.now();
-        console.log(`Took ${end - start} ms`);
     }
 
     async function sendMessage() {
@@ -374,8 +371,6 @@ function ChatSession() {
             }
         }
         else {
-            console.log(`Time: ${new Date().toLocaleTimeString()}`);
-            const start = performance.now();
             setStatusWindow("Securing session...");
 
             if (chatRole === "host") {
@@ -416,7 +411,6 @@ function ChatSession() {
 
                             socket.once("qberResult", async (receivedQber) => {
                                 toast.info(`QBER value: ${receivedQber}`);
-                                console.log(`QBER value: ${receivedQber}`);
 
                                 if (receivedQber <= QBERThreshold && receivedQber !== null) {
                                     setQBER(receivedQber);
@@ -424,16 +418,13 @@ function ChatSession() {
                                     if (chatUsesSimulator) {
                                         setStatusWindow(`QBER is ${receivedQber}...Starting session...`);
                                         socket.emit("updateOnQBERAccept", chatRoomId);
-                                        sessionStarted(start);
+                                        sessionStarted();
                                     }
                                     else {
                                         setStatusWindow(`QBER is ${receivedQber}...Generating BCH ECC metadata...`);
-                                        const bchStart = performance.now();
                                         const res = await qcCaller.post("/generateECMetadata", {
                                             key: siftedQkeyBits.current
                                         });
-                                        const bchEnd = performance.now();
-                                        console.log(`Generating metadata: ${bchEnd - bchStart} ms`);
 
                                         if (!sessionLoaded.current) return;
 
@@ -444,7 +435,7 @@ function ChatSession() {
 
                                         socket.once("keyCorrected", () => {
                                             socket.emit("updateOnQBERAccept", chatRoomId);
-                                            sessionStarted(start);
+                                            sessionStarted();
                                         });
 
                                     }
@@ -527,7 +518,7 @@ function ChatSession() {
                                             setStatusWindow(`QBER is ${receivedQber}...Starting session...`);
                                             socket.emit("updateOnQBERAccept", chatRoomId);
                                             toast.success("Eavesdropping successfully!");
-                                            sessionStarted(start);
+                                            sessionStarted();
                                         }
                                         else {
                                             setStatusWindow(`QBER is ${receivedQber}...Waiting for host to generate BCH ECC metadata...`);
@@ -535,7 +526,6 @@ function ChatSession() {
                                             socket.once("parity", async (parityBits) => {
                                                 setStatusWindow("Correcting key...");
 
-                                                const bchStart = performance.now();
                                                 const keyWithParity = siftedQkeyBits.current + parityBits;
                                                 const res = await qcCaller.post("/correctErrorsInKey", {
                                                     key: keyWithParity
@@ -543,15 +533,13 @@ function ChatSession() {
                                                 if (!sessionLoaded.current) return;
 
                                                 siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
-                                                const bchEnd = performance.now();
-                                                console.log(`Correcting key: ${bchEnd - bchStart} ms`);
 
                                                 setStatusWindow("Waiting for receiver to correct their key...");
 
                                                 socket.once("keyCorrected", () => {
                                                     socket.emit("updateOnQBERAccept", chatRoomId);
                                                     toast.success("Eavesdropping successfully!");
-                                                    sessionStarted(start);
+                                                    sessionStarted();
                                                 });
                                             });
                                         }
@@ -624,14 +612,13 @@ function ChatSession() {
 
                                             if (chatUsesSimulator) {
                                                 setStatusWindow(`QBER is ${calcQber}...Starting session...`);
-                                                sessionStarted(start);
+                                                sessionStarted();
                                             }
                                             else {
                                                 setStatusWindow(`QBER is ${calcQber}...Waiting for host to generate BCH ECC metadata...`);
                                                 socket.once("parity", async (parityBits) => {
                                                     setStatusWindow("Correcting key...");
 
-                                                    const bchStart = performance.now();
                                                     const keyWithParity = siftedQkeyBits.current + parityBits;
 
                                                     const res = await qcCaller.post("/correctErrorsInKey", {
@@ -640,11 +627,9 @@ function ChatSession() {
                                                     if (!sessionLoaded.current) return;
 
                                                     siftedQkeyBits.current = (res.data.key).substring(0, (siftedQkeyBits.current).length);
-                                                    const bchEnd = performance.now();
-                                                    console.log(`Correcting key: ${bchEnd - bchStart} ms`);
 
                                                     socket.emit("keyCorrected", chatRoomId);
-                                                    sessionStarted(start);
+                                                    sessionStarted();
                                                 });
                                             }
                                         }
