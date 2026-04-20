@@ -1,0 +1,337 @@
+{
+    Time: 3:45:15 PM
+    QBER value: 1.851
+    Generating metadata: 129.40000000596046 ms
+    Took: 157991 ms
+
+    Time: 3:45:15 PM
+    Correcting key: 34266 ms
+    Took: 158827.59999999404 ms
+
+    Error -> Errors encountered are greater than 7
+},
+
+{
+    Time: 3:45:14 PM
+    QBER value: 3.636
+    Generating metadata: 111.3999999910593 ms
+    Took: 505060.09999999404 ms
+
+    Time: 3:45:13 PM
+    Correcting key: 15669.5 ms
+    Took: 505882.799999997 ms
+},
+
+{
+    Time: 3:53:53 PM
+    QBER value: 3.389
+    Generating metadata: 153 ms
+    Took: 148826.20000000298 ms
+
+    Time: 3:53:53 PM
+    Correcting key: 7884.70000000298 ms
+    Took: 149644.90000000596 ms
+
+    Error -> Errors encountered are greater than 7
+},
+
+{
+    Time: 4:14:44 PM
+    QBER value: 3.225
+    Generating metadata: 225.20000000298023 ms
+    Took: 117156.89999999106 ms
+
+    Time: 4:14:44 PM
+    Correcting key: 33847.40000000596 ms
+    Took: 117985.59999999404 ms
+},
+
+{
+    Time: 4:16:58 PM
+    QBER value: 0
+    Generating metadata: 496.70000000298023 ms
+    Took: 85078.10000000894 ms
+
+    Time: 4:16:57 PM
+    Correcting key: 21629 ms
+    Took: 85881 ms
+},
+
+{
+    Time: 4:19:17 PM
+    QBER value: 3.076
+    Generating metadata: 211.20000000298023 ms
+    Took: 83694.09999999404 ms
+
+    Time: 4:19:16 PM
+    Correcting key: 11895.79999999702 ms
+    Took: 84500.10000000894 ms
+},
+
+{
+    Time: 4:20:54 PM
+    QBER value: 9.259
+    Generating metadata: 112.59999999403954 ms
+    Took: 81724.19999998808 ms
+
+    Time: 4:20:53 PM
+    Correcting key: 17387.59999999404 ms
+    Took: 82545.20000000298 ms
+},
+
+{
+    Time: 4:22:28 PM
+    QBER value: 1.785
+    Generating metadata: 178.79999999701977 ms
+    Took: 81923.5 ms
+
+    Time: 4:22:27 PM
+    Correcting key: 15203.20000000298 ms
+    Took: 82722.10000000894 ms
+},
+
+{
+    Time: 4:24:06 PM
+    QBER value: 1.785
+    Generating metadata: 822.7000000029802 ms
+    Took: 108396.79999999702 ms
+
+    Time: 4:24:05 PM
+    Correcting key: 22705.90000000596 ms
+    Took: 109219.70000000298 ms
+},
+
+{
+    Time: 4:26:11 PM
+    QBER value: 1.923
+    Generating metadata: 213.90000000596046 ms
+    Took: 106093.89999999106 ms
+
+    Time: 4:26:10 PM
+    Correcting key: 34862.90000000596 ms
+    Took: 106907.69999998808 ms
+},
+
+{
+    Time: 4:14:49 PM
+    QBER value: 1.818
+    Generating metadata: 135.09999999403954 ms
+    Took: 193380.40000000596 ms
+
+    Time: 4:14:48 PM
+    Correcting key: 9272.09999999404 ms
+    Took: 194206.59999999404 ms
+},
+
+{
+    Time: 4:18:18 PM
+    QBER value: 0
+    Generating metadata: 112.40000000596046 ms
+    Took: 85394.5 ms
+
+    Time: 4:18:17 PM
+    Correcting key: 8790.09999999404 ms
+    Took: 86188.70000000298 ms
+},
+
+{
+    Time: 4:19:59 PM
+    QBER value: 4.545
+    Generating metadata: 121.3999999910593 ms
+    Took: 89577.70000000298 ms
+
+    Time: 4:19:58 PM
+    Correcting key: 18267.29999999702 ms
+    Took: 90398.90000000596 ms
+},
+
+{
+    Time: 4:21:40 PM
+    QBER value: 1.666
+    Generating metadata: 393.5 ms
+    Took: 133035 ms
+
+    Time: 4:21:39 PM
+    Correcting key: 8133.600000008941 ms
+    Took: 133850.5 ms
+},
+
+{
+    Time: 4:24:10 PM
+    QBER value: 3.389
+    Generating metadata: 222.19999998807907 ms
+    Took: 92499.5 ms
+
+    Time: 4:24:09 PM
+    Correcting key: 20033.5 ms
+    Took: 93319.20000000298 ms
+},
+
+{
+    Time: 4:25:57 PM
+    QBER value: 3.225
+    Generating metadata: 558.5999999940395 ms
+    Took: 122347.09999999404 ms
+
+    Time: 4:25:56 PM
+    Correcting key: 28052.59999999404 ms
+    Took: 123130.70000000298 ms
+},
+
+{
+    Time: 4:37:35 PM
+    QBER value: 1.785
+    Generating metadata: 210.40000000596046 ms
+    Took: 175497.69999998808 ms
+
+    Time: 4:37:34 PM
+    Correcting key: 16741.29999999702 ms
+    Took: 176306.89999999106 ms
+},
+
+{
+    Time: 4:40:45 PM
+    QBER value: 2.985
+    Generating metadata: 136.5 ms
+    Took: 113051.29999999702 ms
+
+    Time: 4:40:44 PM
+    Correcting key: 11237.5 ms
+    Took: 113966.20000000298 ms
+},
+
+{
+    Time: 4:43:01 PM
+    QBER value: 1.694
+    Generating metadata: 154.1000000089407 ms
+    Took: 114926.5 ms
+
+    Time: 4:43:00 PM
+    Correcting key: 24778 ms
+    Took: 115738.5 ms
+},
+
+{
+    Time: 4:45:17 PM
+    QBER value: 4.615
+    Generating metadata: 137.20000000298023 ms
+    Took: 95902.29999999702 ms
+
+    Time: 4:45:16 PM
+    Correcting key: 28983.5 ms
+    Took: 96713 ms
+},
+
+{
+    Time: 4:47:06 PM
+    QBER value: 3.174
+    Generating metadata: 177.29999999701977 ms
+    Took: 92824 ms
+
+    Time: 4:47:05 PM
+    Correcting key: 20434.59999999404 ms
+    Took: 93643.69999998808 ms
+},
+
+{
+    Time: 4:48:50 PM
+    QBER value: 3.03
+    Generating metadata: 198.5 ms
+    Took: 124725.70000000298 ms
+
+    Time: 4:48:49 PM
+    Correcting key: 23170.19999998808 ms
+    Took: 125554.5 ms
+},
+
+{
+    Time: 4:51:07 PM
+    QBER value: 3.389
+    Generating metadata: 76.70000000298023 ms
+    Took: 155764.39999999106 ms
+
+    Time: 4:51:06 PM
+    Correcting key: 15561 ms
+    Took: 156565.59999999404 ms
+},
+
+{
+    Time: 4:37:41 PM
+    QBER value: 1.562
+    Generating metadata: 201.70000000298023 ms
+    Took: 109183.20000000298 ms
+
+    Time: 4:37:40 PM
+    Correcting key: 17134 ms
+    Took: 109969.5 ms
+},
+
+{
+    Time: 4:39:44 PM
+    QBER value: 3.333
+    Generating metadata: 176.5 ms
+    Took: 144949.60000000894 ms
+
+    Error -> Errors encountered are greater than 7
+
+    Time: 4:39:43 PM
+    Correcting key: 26687.5 ms
+    Took: 145781.29999999702 ms
+},
+
+{
+    Time: 4:42:29 PM
+    QBER value: 1.666
+    Generating metadata: 166.09999999403954 ms
+    Took: 122126.29999999702 ms
+
+    Time: 4:42:28 PM
+    Correcting key: 26040.10000000894 ms
+    Took: 122923.39999999106 ms
+},
+
+{
+    Time: 4:44:46 PM
+    QBER value: 1.666
+    Generating metadata: 1840.1000000089407 ms
+    Took: 85694 ms
+
+    Time: 4:44:46 PM
+    Correcting key: 13254.20000000298 ms
+    Took: 86513.5 ms
+},
+
+{
+    Time: 4:46:24 PM
+    QBER value: 1.47
+    Generating metadata: 180.80000001192093 ms
+    Took: 94564.70000000298 ms
+
+    Time: 4:46:23 PM
+    Correcting key: 12897.70000000298 ms
+    Took: 95363.60000000894 ms
+},
+
+{
+    Time: 4:48:13 PM
+    QBER value: 5.172
+    Generating metadata: 214 ms
+    Took: 100369.20000000298 ms
+
+    Error -> Errors encountered are greater than 7
+
+    Time: 4:48:12 PM
+    Correcting key: 43723.40000000596 ms
+    Took: 101185 ms
+},
+
+{
+    Time: 4:50:23 PM
+    QBER value: 1.612
+    Generating metadata: 237.20000000298023 ms
+    Took: 152711.10000000894 ms
+
+    Time: 4:50:22 PM
+    Correcting key: 35090.5 ms
+    Took: 153616.59999999404 ms
+}

@@ -32,7 +32,9 @@ qcCaller.interceptors.response.use(
                 localStorage.setItem("access-token", `Bearer ${authResponse.data.accessToken}`);
                 originalRequest.headers.Authorization = localStorage.getItem("access-token");
                 return qcCaller(originalRequest);
-            } catch {
+            }
+            catch {
+                console.log("Auth refresh failed!");
                 return Promise.reject(error);
             }
         }
