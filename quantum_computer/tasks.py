@@ -7,5 +7,5 @@ def run(c):
 @task
 def build(c):
     c.run("docker build --no-cache -t quantum-service .")
-    c.run("docker tag quchat thestarslayer/quantum-service:latest")
+    c.run("docker tag quantum-service thestarslayer/quantum-service:latest")
     c.run("docker push thestarslayer/quantum-service:latest")
