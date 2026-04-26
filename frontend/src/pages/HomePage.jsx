@@ -212,10 +212,13 @@ function HomePage() {
 
             const socket = socketRef.current;
 
-            socket.on("requestForED", (request) => {
+            const addEDRequests = (request) => {
                 if (request.sender !== userId && request.receiver !== userId)
                     setEavesdroppableRequests(prev => [request, ...prev]);
-            });
+            };
+
+            socket.on("requestForED", addEDRequests);
+            socket.on("renewedEDRequest", addEDRequests);
 
             socket.on("removeRequestForED", (uid) =>
                 setEavesdroppableRequests(prev => prev.filter(r => r.sender !== uid))
@@ -227,6 +230,7 @@ function HomePage() {
             
             return () => {
                 socket.off("requestForED");
+                socket.off("renewedEDRequest");                
                 socket.off("removeRequestForED");
                 socket.off("removeRequest");
                 initiatedEDR.current = false;
