@@ -24,4 +24,4 @@ COPY . .
 EXPOSE 8598
 
 # Run FastAPI with uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8598"]
+CMD ["python", "main.py"]
