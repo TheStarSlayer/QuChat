@@ -24,10 +24,12 @@ import math
 
 import pymongo
 from pymongo import ReturnDocument
+import uvicorn
 
 from lib.BCHCode import BCHCode
 
 load_dotenv()
+port = int(os.getenv("PORT", 8598))
 
 powers_of_two = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 
@@ -821,3 +823,6 @@ async def correctErrors(
         corrected_key_str += str(corrected_key[i])
         
     return JSONResponse(status_code=200, content={ "key": corrected_key_str })
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=port)
