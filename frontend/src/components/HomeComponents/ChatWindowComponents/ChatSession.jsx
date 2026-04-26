@@ -887,7 +887,7 @@ function ChatSession() {
                         {chatMessages.length === 0 && (
                             <div className="flex justify-center py-8">
                                 <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)", letterSpacing: "2px" }}>
-                                    QUANTUM CHANNEL OPEN · BEGIN TRANSMISSION
+                                    {chatEncryption !== "none" ? "QUANTUM ENCRYPTION ON" : "QUANTUM ENCRYPTION OFF"}
                                 </span>
                             </div>
                         )}
@@ -1089,7 +1089,7 @@ function ChatSession() {
                         <div className="py-2 flex justify-center"
                             style={{ borderTop: "1px solid rgba(33,150,243,0.08)" }}>
                             <span style={{ fontSize: "10px", letterSpacing: "2px", color: "rgba(33,150,243,0.4)" }}>
-                                MONITORING STREAM · PASSIVE OBSERVER MODE
+                                MONITORING CHAT · PASSIVE OBSERVER MODE
                             </span>
                         </div>
                     )}
