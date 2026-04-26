@@ -11,3 +11,4 @@ qiskit_ibm_runtime==0.46.1
 starlette==1.0.0
 sympy==1.14.0
 uvicorn==0.44.0
+invoke==3.0.3

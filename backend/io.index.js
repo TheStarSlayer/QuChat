@@ -52,7 +52,7 @@ const socketInit = (io) => {
         socket.on("resetSocketStats", () => resetSocketStats(socket));
         socket.on("sessionDisturbed", (roomId, message) => sessionDisturbedEvent(socket, roomId, message));
         socket.on("sessionEnd", roomId => sessionEndEvent(socket, roomId));
-        socket.on("disconnect", async () => await socketDisconnectEvent(socket));
+        socket.on("disconnect", async () => await socketDisconnectEvent(io, socket));
     });
 };
 
