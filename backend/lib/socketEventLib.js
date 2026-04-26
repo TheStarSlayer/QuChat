@@ -197,7 +197,7 @@ export const resetSocketStats = socket => {
  * - disconnect on eavesdropping
  * - disconnect on chat session
  */
-export const socketDisconnectEvent = async (socket) => {
+export const socketDisconnectEvent = async (io, socket) => {
     try {
         await OnlineUsers.deleteOne({ username: socket.userId });
         await redisClient.zRem("onlineUsers", socket.userId);
@@ -231,7 +231,18 @@ export const socketDisconnectEvent = async (socket) => {
                         .zAdd('EDRequestIndex', { score: createdOn, value: senderId })
                         .set(`requester:${senderId}`, JSON.stringify(updatedRequest))
                         .exec();
-                        
+
+                    const renewedRequestPublic = {
+                        sender: updatedRequest.sender,
+                        receiver: updatedRequest.receiver,
+                        createdOn: updatedRequest.createdOn,
+                        isSimulator: updatedRequest.isSimulator,
+                        timeLimitInMs: updatedRequest.timeLimitInMs,
+                        typeOfEncryption: updatedRequest.typeOfEncryption,
+                        chatSessionTimeInMin: updatedRequest.chatSessionTimeInMin
+                    };
+                    
+                    io.emit("renewedEDRequest", renewedRequestPublic);                        
                 }
                 catch (err) {
                     console.error(err);
