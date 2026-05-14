@@ -92,6 +92,8 @@ function ChatSession() {
     async function sessionStarted(start) {
         if (chatEncryption === "bb84")
             quantumKey.current = await getAESKey(siftedQkeyBits.current);
+        else
+            await setToBusy();
 
         setFreeToChat(true);
         if (chatRole !== "eavesdropper")
@@ -146,7 +148,7 @@ function ChatSession() {
                     fileToSend = await encryptFile(sendingFile, quantumKey.current);
     
                 const res = await apiCaller.get(`/getUploadLink`, {
-                    params: { bucketName: "quchat", key, fileType }
+                    params: { bucketName: "quantachat", key, fileType }
                 });
                 const uploadLink = res.data.uploadLink;
 
@@ -224,7 +226,7 @@ function ChatSession() {
 
     async function downloadFile(key) {
         const res = await apiCaller.get("/getDownloadLink", {
-            params: { bucketName: "quchat", key, expiresInMin: chatSessionTimer }
+            params: { bucketName: "quantachat", key, expiresInMin: chatSessionTimer }
         });
 
         const url = res.data.downloadLink;
@@ -351,8 +353,6 @@ function ChatSession() {
         }
 
         if (chatEncryption === "none") {
-            setToBusy();
-
             if (chatRole === "host") {
                 setStatusWindow("Starting session!");
                 socket.emit("joinAck", userId, true);
@@ -509,6 +509,7 @@ function ChatSession() {
 
                             socket.once("qber", ({ randIndices }) => {
                                 setStatusWindow("Intercepted random indices from host to discard...");
+                                console.log("Random Indices:", randIndices);
                                 
                                 const _ = getRandBits(randIndices);
                                 socket.off("bases");
@@ -555,16 +556,13 @@ function ChatSession() {
                                                 });
                                             });
                                         }
-
-                                        
                                     }
                                 });
                             });
                         }
                         catch {
                             socket.emit("leave", chatRoomId);
-                            toast.error("Unexpected error occurred!");
-                            
+                            toast.error("Unexpected error occurred!");    
                             setTimeout(() => resetChatWindow(), 1000);
                         }
                     }
@@ -574,7 +572,6 @@ function ChatSession() {
                 setStatusWindow("Waiting for acknowledgement of session from host...");
 
                 socket.once("ackFromHost", async (ack) => {
-                    setToBusy();
                     if (!ack) {
                         setStatusWindow("Host did not acknowledge session!");
                         setTimeout(() => resetChatWindow(), 1000);
@@ -582,6 +579,8 @@ function ChatSession() {
                     }
                     else {
                         setStatusWindow("Received acknowledgement, generating key...This may take some time!");
+                        setToBusy();
+
                         let intervalTime = chatUsesSimulator ? 6000 : 9000;
 
                         tryAgainLater.current = 0;
@@ -606,7 +605,7 @@ function ChatSession() {
                                 socket.emit("shareBases", chatRoomId, qkeyBases.current);
 
                                 socket.once("bases", (bases) => {
-                                    setStatusWindow("Received bases from host...");
+                                    setStatusWindow("Received bases from host...Waiting for random indices...");
                                     socket.once("qber", ({ randIndices, randBits }) => {
                                         setStatusWindow("Sifting key...");
                                         siftKey(bases);
@@ -775,7 +774,7 @@ function ChatSession() {
                     if (filesSentByMe.current.length > 0) {
                         await apiCaller.delete("/deleteObjects", {
                             data: {
-                                bucketName: "quchat",
+                                bucketName: "quantachat",
                                 // eslint-disable-next-line react-hooks/exhaustive-deps
                                 keys: filesSentByMe.current
                             }
@@ -861,7 +860,7 @@ function ChatSession() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
-                    End Session
+                    { !isEavesdropper ? "End Session" : "Exit Session" }
                 </button>
             </div>
 

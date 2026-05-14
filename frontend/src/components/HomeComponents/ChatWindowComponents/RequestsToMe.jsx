@@ -94,7 +94,7 @@ function RequestsToMe() {
                             type="text"
                             value={searchTermForRTM}
                             onChange={e => {setSearchTermForRTM(e.target.value); searcher(e.target.value);}}
-                            placeholder="Search myrequests..."
+                            placeholder="Search my requests..."
                             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-white text-sm outline-none transition-all"
                             style={{
                                 background: "rgba(255,255,255,0.04)",

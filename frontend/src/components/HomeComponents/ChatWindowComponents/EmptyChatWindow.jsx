@@ -54,8 +54,8 @@ function EmptyChatWindow() {
 
                 {/* Title */}
                 <h1 className="text-5xl font-black tracking-tighter mb-2 leading-none" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                    <span className="text-white">QU</span>
-                    <span style={{ color: "#2196F3" }}>CHAT</span>
+                    <span className="text-white">Quanta</span>
+                    <span style={{ color: "#2196F3" }}>Chat</span>
                 </h1>
                 <p className="mb-10" style={{ fontSize: "10px", letterSpacing: "3px", color: "rgba(255,255,255,0.25)" }}>
                     QUANTUM-SECURED COMMUNICATION

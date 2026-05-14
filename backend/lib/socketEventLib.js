@@ -1,6 +1,6 @@
 import { redisClient } from "../index.js";
 import { OnlineUsers } from "../models/user.model.js";
-import checkIfOnline from "./checkIfOnline.js";
+import checkIfAvailable from "./checkIfAvailable.js";
 import RequestModel from "../models/requests.model.js";
 import finishRequest from "./finishRequest.js";
 
@@ -14,6 +14,9 @@ export const socketConnectEvent = async (socket) => {
             isBusy: false
         });
         await redisClient.zAdd("onlineUsers", {
+            score: loggedAt, value: socket.userId
+        });
+        await redisClient.zAdd("idleUsers", {
             score: loggedAt, value: socket.userId
         });
 
@@ -38,8 +41,8 @@ export const socketConnectEvent = async (socket) => {
 };
 
 export const sendJoinRequestEvent = async (socket, request) => {
-    const isReceiverOnline = await checkIfOnline(request.receiver);
-    if (!isReceiverOnline)
+    const isReceiverAvlbl = await checkIfAvailable(request.receiver);
+    if (!isReceiverAvlbl)
         return socket.emit("requestFailed", "User is not available for requests"); // call finishRequest(cancelled)
 
     socket.to(request.receiver).emit("requestToJoin", request);
@@ -47,8 +50,8 @@ export const sendJoinRequestEvent = async (socket, request) => {
 };
 
 export const eavesdropRequestEvent = async (socket, roomId) => {
-    const isSenderOnline = await checkIfOnline(roomId);
-    if (!isSenderOnline)
+    const isSenderAvlbl = await checkIfAvailable(roomId);
+    if (!isSenderAvlbl)
         return socket.emit("requestFailed", "Host is not available");
 
     socket.join(roomId);
@@ -57,8 +60,8 @@ export const eavesdropRequestEvent = async (socket, roomId) => {
 };
 
 export const acceptEvent = async (socket, roomId, typeOfEncryption) => {
-    const isSenderOnline = await checkIfOnline(roomId);
-    if (!isSenderOnline)
+    const isSenderAvlbl = await checkIfAvailable(roomId);
+    if (!isSenderAvlbl)
         return socket.emit("requestFailed", "Host is not available");
 
     socket.join(roomId);
@@ -83,8 +86,8 @@ export const updateSocketDataWhenAcceptedQC = (socket, roomId) => {
 };
 
 export const rejectEvent = async (socket, roomId) => {
-    const isSenderOnline = await checkIfOnline(roomId);
-    if (!isSenderOnline)
+    const isSenderAvlbl = await checkIfAvailable(roomId);
+    if (!isSenderAvlbl)
         return socket.emit("requestFailed", "Host is not available");
 
     socket.to(roomId).emit("response", "rejected"); // sender calls finishRequest(rejected)
@@ -99,10 +102,6 @@ export const rejectEvent = async (socket, roomId) => {
  * On receiving ack by receiver, distributeRawKey is called after 5 seconds
  */
 export const joinAckEvent = async (socket, roomId, ack) => {
-    const isReceiverOnline = await checkIfOnline(roomId);
-    if (!isReceiverOnline)
-        return socket.emit("keyGenFailed", "User is not available for requests"); // call finishRequest(cancelled)
-    
     socket.to(roomId).emit("ackFromHost", ack);
 
     if (!ack)
@@ -200,6 +199,7 @@ export const resetSocketStats = socket => {
 export const socketDisconnectEvent = async (io, socket) => {
     try {
         await OnlineUsers.deleteOne({ username: socket.userId });
+        await redisClient.zRem("idleUsers", socket.userId);
         await redisClient.zRem("onlineUsers", socket.userId);
 
         if (socket.responseWaitSession) {

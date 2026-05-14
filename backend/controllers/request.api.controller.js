@@ -1,6 +1,6 @@
 import RequestModel from "../models/requests.model.js";
 import { redisClient, io } from "../index.js";
-import checkIfOnline from "../lib/checkIfOnline.js";
+import checkIfAvailable, { checkIfOnline } from "../lib/checkIfAvailable.js";
 import finishRequest from "../lib/finishRequest.js";
 
 export const persistRequestController = async (req, res) => {
@@ -13,7 +13,7 @@ export const persistRequestController = async (req, res) => {
     const senderId = req.userId;
 
     // Verify if receiver is available for requests
-    if (!(await checkIfOnline(receiverId)))
+    if (!(await checkIfAvailable(receiverId)))
         return res.status(404).json({ msg: "User is not available for requests" });
 
     // Verify if request already exists

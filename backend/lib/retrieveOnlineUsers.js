@@ -4,9 +4,8 @@ import { OnlineUsers } from "../models/user.model.js";
 const retrieveOnlineUsers = async (currUserId) => {
     let onlineUsers;
     try {
-        const onlineUsersObj = await redisClient.zRange("onlineUsers", 0, -1, { REV: true });
+        const onlineUsersObj = await redisClient.zRange("idleUsers", 0, -1, { REV: true });
         onlineUsers = onlineUsersObj.filter(username => username !== currUserId)
-            
     }
     catch (err) {
         console.error(err);

@@ -31,8 +31,8 @@ function Header({ navigate }) {
                 letterSpacing: "-1px",
                 fontFamily: "'Space Grotesk', sans-serif"
             }}>
-                <span style={{ color: "#2196F3" }}>QU</span>
-                <span style={{ color: "#ffffff" }}>CHAT</span>
+                <span style={{ color: "#2196F3" }}>Quanta</span>
+                <span style={{ color: "#ffffff" }}>Chat</span>
             </div>
 
             {/* Right side */}

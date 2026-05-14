@@ -1,6 +1,6 @@
 import time
 
-from fastapi import FastAPI, Header, Request, Response, Depends, HTTPException
+from fastapi import FastAPI, Header, Response, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Literal
@@ -61,7 +61,7 @@ database = db_client["test"]
 
 q_service = QiskitRuntimeService(
     token=os.getenv("QC_API_KEY"),
-    instance="quchat-key"
+    instance="quantachat-key"
 )
 simulator_job_store = {}
 

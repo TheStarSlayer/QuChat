@@ -97,9 +97,9 @@ export default function SignupUI() {
                             <circle cx="14" cy="14" r="2.5" fill="#2196F3" />
                         </svg>
                     </div>
-                    <div className="text-3xl font-bold tracking-tight leading-none">
-                        <span style={{ color: "#2196F3" }}>Qu</span>
-                        <span className="text-white">Chat</span>
+                    <div className="text-3xl font-bold tracking-tight leading-none" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                        <span className="text-white">Quanta</span>
+                        <span style={{ color: "#2196F3" }}>Chat</span>
                     </div>
                     <p style={{ fontSize: "9px", letterSpacing: "3px", color: "rgba(255,255,255,0.3)" }}>
                         ESTABLISH QUANTUM LINK

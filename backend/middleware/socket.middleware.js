@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import checkIfOnline from "../lib/checkIfOnline.js";
+import { checkIfOnline } from "../lib/checkIfAvailable.js";
 
 export const ioAuth = async (socket, next) => {
     const token = socket.handshake.auth.token;

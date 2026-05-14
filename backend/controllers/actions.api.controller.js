@@ -18,7 +18,7 @@ export const setToBusyController = async (req, res) => {
 
     try {
         await OnlineUsers.updateOne({ username: userId }, { isBusy: true });
-        await redisClient.zRem("onlineUsers", userId);
+        await redisClient.zRem("idleUsers", userId);
 
         io.emit('userLeft', userId);
     }
@@ -35,7 +35,7 @@ export const setToAvailableController = async (req, res) => {
 
     try {
         await OnlineUsers.updateOne({ username: userId }, { isBusy: false, loggedAt: Date.now() });
-        await redisClient.zAdd("onlineUsers", { score: Date.now(), value: userId });
+        await redisClient.zAdd("idleUsers", { score: Date.now(), value: userId });
 
         const profilePicAvtr = userId[0].toLowerCase() + userId[1].toLowerCase()
         io.emit('newUser', {

@@ -1,5 +1,5 @@
 import { User } from "../models/user.model.js";
-import checkIfOnline from "../lib/checkIfOnline.js";
+import checkIfAvailable, { checkIfOnline } from "../lib/checkIfAvailable.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
